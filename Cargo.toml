@@ -5,8 +5,6 @@ edition = "2021"
 
 [dependencies]
 rocket = "0.5.1"
-khulan = { path = "./khulan" } # TODO: use the external crate
-
-[dependencies.rocket_dyn_templates]
-version = "0.2.0"
-features = ["handlebars", "tera"]
+khulan = { path = "./khulan", features = ["robots_txt", "sitemap_xml"] } # TODO: use the external crate
+maud = { version = "0.26.0", features = ["rocket"] }
+rocket_dyn_templates = { version = "0.2.0", features = ["handlebars"] }
