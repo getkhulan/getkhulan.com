@@ -1,0 +1,71 @@
+#[derive(Debug, Clone)]
+pub struct Field {
+    name: String,
+    kind: String,
+    value: String,
+}
+
+impl Field {
+    // change value into Option<&str>
+    pub fn new(name: &str, kind: &str, value: Option<&str>) -> Self {
+        Self {
+            name: name.to_string(),
+            kind: kind.to_string(),
+            value: value.unwrap_or("").to_string(),
+        }
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn kind(&self) -> &str {
+        &self.kind
+    }
+
+    pub fn value(&self) -> &str {
+        &self.value
+    }
+
+    pub fn set_value(&mut self, value: Option<&str>) -> &str {
+        match value {
+            Some(value) => {
+                self.value = value.to_string();
+                &self.value
+            }
+            None => &self.value,
+        }
+    }
+
+    pub fn to_int(&self) -> i32 {
+        self.value.parse::<i32>().unwrap()
+    }
+
+    pub fn to_float(&self) -> f32 {
+        self.value.parse::<f32>().unwrap()
+    }
+
+    pub fn to_bool(&self) -> bool {
+        self.value.parse::<bool>().unwrap()
+    }
+}
+
+#[cfg(test)]
+mod tests_field {
+    use super::*;
+
+    #[test]
+    fn it_works() {
+        let mut field = Field::new("title", "text", Some("Hello, World!"));
+        assert_eq!(field.name(), "title");
+        assert_eq!(field.kind(), "text");
+        assert_eq!(field.value(), "Hello, World!");
+    }
+
+    #[test]
+    fn it_sets_value() {
+        let mut field = Field::new("title", "text", None);
+        field.set_value(Some("Hello, World!"));
+        assert_eq!(field.value(), "Hello, World!");
+    }
+}

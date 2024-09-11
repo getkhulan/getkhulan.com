@@ -1,22 +1,17 @@
 #[macro_use]
 extern crate rocket;
-use khulan;
-
+use khulan::cms::helpers::add;
+use khulan::routes::*;
+use khulan::site;
 use maud::{html, Markup};
 use rocket::fairing::AdHoc;
 use rocket::fs::FileServer;
 use rocket::Config;
 use rocket_dyn_templates::{context, Template};
 
-#[get("/")]
-fn index() -> Template {
-    let context = context! { hello: format!("world {}", khulan::add(2, 2)) };
-    Template::render("index", &context)
-}
-
 #[get("/hbs")]
 fn thbs() -> Template {
-    let context = context! { hello: format!("world {}", khulan::add(2, 2)) };
+    let context = context! { hello: format!("world {}", add(2, 2)) };
     Template::render("index", &context)
 }
 
@@ -28,17 +23,18 @@ fn tmaud() -> Markup {
                 title { "Title" }
             }
             body {
-                (format!("world {}", khulan::add(2, 2)))
+                (format!("world {}", add(2, 2)))
             }
         }
     }
 }
 
 #[launch]
-fn rocket() -> _ {
+async fn rocket() -> _ {
     rocket::build()
-        .mount("/", routes![index, thbs, tmaud])
-        .mount("/", routes![khulan::robots_txt, khulan::sitemap_xml])
+        .manage(site().await)
+        .mount("/", routes![thbs, tmaud])
+        .mount("/", routes![index, robots_txt, sitemap_xml])
         .mount("/", FileServer::from("./public"))
         .attach(Template::fairing())
         .attach(AdHoc::config::<Config>())

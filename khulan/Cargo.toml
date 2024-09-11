@@ -3,15 +3,12 @@ name = "khulan"
 version = "0.1.0"
 edition = "2021"
 
-[workspace]
-members = [
-    "robots_txt",
-    "sitemap_xml",
-]
-
 [features]
+content_folder = ["tokio"]
 robots_txt = ["rocket"]
 sitemap_xml = ["rocket"]
+default = ["content_folder", "robots_txt", "sitemap_xml"]
 
 [dependencies]
 rocket = { version = "*", optional = true}
+tokio = { version = "*", optional = true }
