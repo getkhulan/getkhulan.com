@@ -31,8 +31,9 @@ fn tmaud() -> Markup {
 
 #[launch]
 async fn rocket() -> _ {
+    let dir = std::env::current_dir().unwrap();
     rocket::build()
-        .manage(site().await)
+        .manage(site(dir.clone()).await)
         .mount("/", routes![thbs, tmaud])
         .mount("/", routes![index, robots_txt, sitemap_xml])
         .mount("/", FileServer::from("./public"))

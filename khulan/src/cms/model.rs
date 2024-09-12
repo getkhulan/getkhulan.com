@@ -1,20 +1,17 @@
 use crate::cms::content::Content;
+use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
 pub struct Model {
-    title: String,
-    uuid: String,
-    num: String,
-    path: String,
+    num: u16,
+    path: PathBuf,
     template: String,
     content: Content,
 }
 
 pub struct ModelBuilder {
-    title: String,
-    uuid: String,
-    num: String,
-    path: String,
+    num: u16,
+    path: PathBuf,
     template: String,
     content: Content,
 }
@@ -22,32 +19,30 @@ pub struct ModelBuilder {
 impl ModelBuilder {
     pub fn new() -> Self {
         Self {
-            title: "".to_string(),
-            uuid: "".to_string(),
-            num: "".to_string(),
-            path: "".to_string(),
+            num: 0, // TODO: this would mess up sorting, num should be None by default
+            path: PathBuf::new(),
             template: "".to_string(),
             content: Content::new(None),
         }
     }
 
     pub fn title(&mut self, title: &str) -> &mut Self {
-        self.title = title.to_string();
+        self.content.field_mut("title", Some(title));
         self
     }
 
     pub fn uuid(&mut self, uuid: &str) -> &mut Self {
-        self.uuid = uuid.to_string();
+        self.content.field_mut("uuid", Some(uuid));
         self
     }
 
-    pub fn num(&mut self, num: &str) -> &mut Self {
-        self.num = num.to_string();
+    pub fn num(&mut self, num: u16) -> &mut Self {
+        self.num = num;
         self
     }
 
-    pub fn path(&mut self, path: &str) -> &mut Self {
-        self.path = path.to_string();
+    pub fn path(&mut self, path: PathBuf) -> &mut Self {
+        self.path = path;
         self
     }
 
@@ -57,21 +52,19 @@ impl ModelBuilder {
     }
 
     pub fn content(&mut self, content: Content) -> &mut Self {
-        self.content = content;
+        self.content.merge(content);
         self
     }
 
     pub fn build(&self) -> Result<Model, &'static str> {
-        if self.title.is_empty() || self.uuid.is_empty() || self.num.is_empty() {
-            return Err("title, uuid, and num are required");
-        }
+        // if self.title.is_empty() || self.uuid.is_empty() || self.num.is_empty() {
+        //     return Err("title, uuid, and num are required");
+        // }
         Ok(Model {
-            title: self.title.clone(),
-            uuid: self.uuid.clone(),
             num: self.num.clone(),
-            path: "".to_string(),
-            template: "".to_string(),
-            content: Content::new(None),
+            path: self.path.clone(),
+            template: self.template.to_string(),
+            content: self.content.clone(),
         })
     }
 }
@@ -82,19 +75,33 @@ impl Model {
     }
 
     pub fn title(&self) -> &str {
-        &self.title
-    }
-
-    pub fn path(&self) -> &str {
-        &self.path
+        match self.content.field("title") {
+            Some(field) => field.value(),
+            None => "",
+        }
     }
 
     pub fn uuid(&self) -> &str {
-        &self.uuid
+        match self.content.field("uuid") {
+            Some(field) => field.value(),
+            None => "",
+        }
+    }
+
+    pub fn path(&self) -> &PathBuf {
+        &self.path
+    }
+
+    pub fn num(&self) -> &u16 {
+        &self.num
+    }
+
+    pub fn template(&self) -> &str {
+        &self.template
     }
 
     pub fn url(&self) -> String {
-        format!("/{}", self.path) // TODO: prefix with site url
+        format!("/{}", self.path.to_string_lossy()) // TODO: prefix with site url
     }
 }
 
@@ -107,9 +114,11 @@ mod tests {
         let model = Model::build()
             .title("Hello, World!")
             .uuid("123")
-            .num("1")
+            .num(1)
             .build()
             .unwrap();
         assert_eq!(model.title(), "Hello, World!");
+        assert_eq!(model.uuid(), "123");
+        assert_eq!(*model.num(), 1);
     }
 }

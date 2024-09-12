@@ -1,19 +1,21 @@
 use crate::cms::content::Content;
+use crate::cms::model::Model;
 use crate::cms::page::Page;
 use std::path::PathBuf;
 use tokio::fs;
 use tokio::io::AsyncReadExt;
+
 pub struct Site {
-    dir: String,
+    dir: PathBuf,
     content: Content,
     pages: Vec<Page>,
     // TODO: add Files
 }
 
 impl Site {
-    pub async fn new(pages: Option<Vec<Page>>, dir: Option<&str>) -> Self {
+    pub async fn new(pages: Option<Vec<Page>>, dir: Option<PathBuf>) -> Self {
         let site = Self {
-            dir: dir.unwrap_or("").to_string(),
+            dir: dir.unwrap_or(PathBuf::from("")),
             content: Content { fields: vec![] },
             pages: pages.unwrap_or(vec![]),
         };
@@ -53,7 +55,9 @@ impl Site {
         let page = self
             .pages
             .iter()
-            .filter(|page| [page.model().path(), page.model().uuid()].contains(&search))
+            .filter(|page| {
+                [page.model().path().to_str().unwrap(), page.model().uuid()].contains(&search)
+            })
             .next();
         match page {
             Some(page) => Some(page),
@@ -63,31 +67,46 @@ impl Site {
 
     #[cfg(feature = "content_folder")]
     async fn load_from_kirby(&self) -> Result<(), Box<dyn std::error::Error>> {
-        let path = PathBuf::from(self.dir.as_str());
-
-        // write out the path
-        println!("Path: {:?}", path);
-
+        // TODO: make the content folder configurable
+        let path = PathBuf::from(format!("{}/storage/content", self.dir.to_str().unwrap()));
+        let p = path.clone();
         if path.exists() == false {
-            println!("Path XXX: {:?}", path);
             return Err("Path does not exist".into());
         }
 
         let mut entries = fs::read_dir(path).await?;
 
+        let mut pages = vec![];
         while let Some(entry) = entries.next_entry().await? {
             let file_path = entry.path();
 
             // Check if the entry is a file
-            if file_path.is_file() {
-                // Open and read the file asynchronously
+            // TODO: only load those that will be page objects
+            if file_path.is_file() && file_path.extension().unwrap() == "txt" {
                 let mut file = fs::File::open(&file_path).await?;
                 let mut contents = String::new();
                 file.read_to_string(&mut contents).await?;
 
-                // Output the file path and its contents
-                println!("File: {:?}", file_path);
-                println!("Contents:\n{}", contents);
+                // TODO: convert to builder pattern
+                let mut content = Content::new(None);
+                content.load_txt(contents.as_str());
+
+                // TODO: this should remove the filename as well
+                // TODO: handle site.en.txt
+                let rel_path = file_path
+                    .strip_prefix(p.clone())
+                    .ok()
+                    .map(PathBuf::from)
+                    .unwrap();
+                let model = Model::build()
+                    .path(rel_path) // TODO: make it relative to content folder
+                    .template("default") // TODO: get the template
+                    .content(content)
+                    .build()
+                    .unwrap();
+                let page = Page::new(model);
+                println!("{:#?}", page.clone());
+                pages.push(page);
             }
         }
 
@@ -105,7 +124,7 @@ mod tests {
         let model = ModelBuilder::new()
             .title("Hello, World!")
             .uuid("1234")
-            .num("1")
+            .num(1)
             .path("/hello-world")
             .template("default")
             .build();
@@ -119,7 +138,7 @@ mod tests {
         let model = ModelBuilder::new()
             .title("Hello, World!")
             .uuid("1234")
-            .num("1")
+            .num(1)
             .path("/hello-world")
             .template("default")
             .build();
@@ -134,7 +153,7 @@ mod tests {
         let model = ModelBuilder::new()
             .title("Hello, World!")
             .uuid("1234")
-            .num("1")
+            .num(1)
             .path("/hello-world")
             .template("default")
             .build();
@@ -143,7 +162,7 @@ mod tests {
         let model = ModelBuilder::new()
             .title("Hello, World!")
             .uuid("1234")
-            .num("1")
+            .num(1)
             .path("/hello-world")
             .template("default")
             .build();
@@ -154,7 +173,7 @@ mod tests {
 
     #[tokio::test]
     async fn it_loads_from_kirby() {
-        let site = Site::new(None, Some("TODO")).await;
+        let site = Site::new(None, Some(PathBuf::from("TODO"))).await;
         assert_eq!(site.load_from_kirby().await.is_ok(), true);
     }
 }

@@ -1,5 +1,6 @@
 use crate::cms::model::Model;
 
+#[derive(Debug, Clone)]
 pub struct Page {
     model: Model,
 }
@@ -24,7 +25,7 @@ mod tests {
         let model = ModelBuilder::new()
             .title("Hello, World!")
             .uuid("1234")
-            .num("1")
+            .num(1)
             .path("/hello-world")
             .template("default")
             .build();
