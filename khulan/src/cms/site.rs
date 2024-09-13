@@ -1,33 +1,40 @@
 use crate::cms::content::Content;
-use crate::cms::model::Model;
+use crate::cms::model::ModelBuilder;
 use crate::cms::page::Page;
+use std::collections::HashMap;
 use std::path::PathBuf;
 use tokio::fs;
 use tokio::io::AsyncReadExt;
+use url::Url;
 
+#[derive(Debug)]
 pub struct Site {
-    dir: PathBuf,
-    content: Content,
-    pages: Vec<Page>,
+    dir: PathBuf, // TODO: refactor to roots hashmap
+    url: Url,
+    pub content: Content,
+    pub pages: HashMap<String, Page>,
     // TODO: add Files
 }
 
 impl Site {
-    pub async fn new(pages: Option<Vec<Page>>, dir: Option<PathBuf>) -> Self {
-        let site = Self {
+    pub async fn new(
+        pages: Option<HashMap<String, Page>>,
+        dir: Option<PathBuf>,
+        url: Option<Url>,
+    ) -> Self {
+        Self {
             dir: dir.unwrap_or(PathBuf::from("")),
-            content: Content { fields: vec![] },
-            pages: pages.unwrap_or(vec![]),
-        };
-
-        if site.pages.is_empty() {
-            site.load().await;
+            url: url.unwrap_or(Url::parse("http://localhost:8000").unwrap()),
+            content: Content::new(None),
+            pages: pages.unwrap_or(HashMap::new()),
         }
-
-        site
     }
 
-    async fn load(&self) {
+    pub fn url(&self) -> &Url {
+        &self.url
+    }
+
+    pub async fn load(&mut self) {
         if self.pages.is_empty() == false {
             return;
         }
@@ -36,49 +43,28 @@ impl Site {
         self.load_from_kirby().await.unwrap();
     }
 
-    // refactor to a getter and setter where the getter is not mutable
-    pub fn pages(&self) -> &Vec<Page> {
-        &self.pages
-    }
-
-    pub fn set_pages(&mut self, pages: Option<Vec<Page>>) -> &Vec<Page> {
-        match pages {
-            Some(pages) => {
-                self.pages = pages;
-                &self.pages
-            }
-            None => &self.pages,
-        }
-    }
-
     pub fn page(&self, search: &str) -> Option<&Page> {
-        let page = self
-            .pages
-            .iter()
-            .filter(|page| {
-                [page.model().path().to_str().unwrap(), page.model().uuid()].contains(&search)
-            })
-            .next();
-        match page {
-            Some(page) => Some(page),
-            None => None,
-        }
+        self.pages
+            .get(search)
+            .or_else(|| self.pages.values().find(|page| page.model.uuid() == search))
     }
 
     #[cfg(feature = "content_folder")]
-    async fn load_from_kirby(&self) -> Result<(), Box<dyn std::error::Error>> {
+    async fn load_from_kirby(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         // TODO: make the content folder configurable
         let path = PathBuf::from(format!("{}/storage/content", self.dir.to_str().unwrap()));
         let p = path.clone();
+        println!("{:#?}", path.clone());
         if path.exists() == false {
             return Err("Path does not exist".into());
         }
 
         let mut entries = fs::read_dir(path).await?;
 
-        let mut pages = vec![];
+        // TODO: make this recursive
         while let Some(entry) = entries.next_entry().await? {
             let file_path = entry.path();
+            println!("{:#?}", file_path.clone());
 
             // Check if the entry is a file
             // TODO: only load those that will be page objects
@@ -98,15 +84,15 @@ impl Site {
                     .ok()
                     .map(PathBuf::from)
                     .unwrap();
-                let model = Model::build()
+                let model = ModelBuilder::new()
                     .path(rel_path) // TODO: make it relative to content folder
                     .template("default") // TODO: get the template
-                    .content(content)
-                    .build()
-                    .unwrap();
+                    .content(&content)
+                    .build();
                 let page = Page::new(model);
                 println!("{:#?}", page.clone());
-                pages.push(page);
+                self.pages
+                    .insert(page.model.path().to_string_lossy().to_string(), page);
             }
         }
 
@@ -114,66 +100,131 @@ impl Site {
     }
 }
 
+pub struct SiteBuilder {
+    dir: PathBuf,
+    url: Url,
+    content: Content,
+    pages: HashMap<String, Page>,
+}
+
+impl SiteBuilder {
+    pub fn new() -> Self {
+        Self {
+            dir: PathBuf::new(),
+            url: Url::parse("http://localhost:8000").unwrap(),
+            content: Content::new(None),
+            pages: HashMap::new(),
+        }
+    }
+
+    pub fn url(&mut self, url: Url) -> &mut Self {
+        self.url = url;
+        self
+    }
+
+    pub fn dir(&mut self, dir: PathBuf) -> &mut Self {
+        self.dir = dir;
+        self
+    }
+
+    pub fn content(&mut self, content: Content) -> &mut Self {
+        self.content = content;
+        self
+    }
+
+    pub fn pages(&mut self, pages: HashMap<String, Page>) -> &mut Self {
+        self.pages = pages;
+        self
+    }
+
+    pub fn build(&self) -> Site {
+        Site {
+            dir: self.dir.clone(),
+            url: self.url.clone(),
+            content: self.content.clone(),
+            pages: self.pages.clone(),
+        }
+    }
+}
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::cms::model::ModelBuilder;
+    use maplit::hashmap;
 
-    #[tokio::test]
-    async fn it_works() {
+    #[test]
+    fn it_works() {
         let model = ModelBuilder::new()
             .title("Hello, World!")
             .uuid("1234")
-            .num(1)
-            .path("/hello-world")
+            .num("1")
+            .path(PathBuf::from("/hello-world"))
             .template("default")
             .build();
-        let page = Page::new(model.unwrap());
-        let site = Site::new(Some(vec![page]), None).await;
+        let page = Page::new(model);
+        let site = SiteBuilder::new()
+            .pages(hashmap! {
+                "1234".to_string() => page
+            })
+            .build();
         assert_eq!(site.pages.len(), 1);
     }
 
-    #[tokio::test]
-    async fn it_gets_page() {
+    #[test]
+    fn it_gets_page() {
         let model = ModelBuilder::new()
             .title("Hello, World!")
             .uuid("1234")
-            .num(1)
-            .path("/hello-world")
+            .num("1")
+            .path(PathBuf::from("/hello-world"))
             .template("default")
             .build();
-        let page = Page::new(model.unwrap());
-        let site = Site::new(Some(vec![page]), None).await;
+        let page = Page::new(model);
+        let site = SiteBuilder::new()
+            .pages(hashmap! {
+                "1234".to_string() => page
+            })
+            .build();
         let page = site.page("1234");
-        assert_eq!(page.unwrap().model().uuid(), "1234");
+        assert_eq!(page.unwrap().model.uuid(), "1234");
     }
 
-    #[tokio::test]
-    async fn it_sets_pages() {
+    #[test]
+    fn it_sets_pages() {
         let model = ModelBuilder::new()
             .title("Hello, World!")
             .uuid("1234")
-            .num(1)
-            .path("/hello-world")
+            .num("1")
+            .path(PathBuf::from("/hello-world"))
             .template("default")
             .build();
-        let page = Page::new(model.unwrap());
-        let mut site = Site::new(Some(vec![page]), None).await;
+        let page = Page::new(model);
+        let mut site = SiteBuilder::new()
+            .pages(hashmap! {
+                "1234".to_string() => page
+            })
+            .build();
+
         let model = ModelBuilder::new()
             .title("Hello, World!")
             .uuid("1234")
-            .num(1)
-            .path("/hello-world")
+            .num("1")
+            .path(PathBuf::from("/hello-world"))
             .template("default")
             .build();
-        let page = Page::new(model.unwrap());
-        site.set_pages(Some(vec![page]));
+        let page = Page::new(model);
+        site.pages.extend(hashmap! {
+            "1234".to_string() => page
+        });
         assert_eq!(site.pages.len(), 1);
     }
 
     #[tokio::test]
+    #[cfg(feature = "content_folder")]
     async fn it_loads_from_kirby() {
-        let site = Site::new(None, Some(PathBuf::from("TODO"))).await;
+        let mut site = SiteBuilder::new()
+            .dir(PathBuf::from("/Users/bnomei/Sites/getkhulan-com"))
+            .build();
         assert_eq!(site.load_from_kirby().await.is_ok(), true);
     }
 }

@@ -13,3 +13,5 @@ default = ["content_folder", "robots_txt", "sitemap_xml"]
 rocket = { version = "*", optional = true}
 tokio = { version = "*", optional = true }
 yaml-rust = { version = "*", optional = true }
+url = "*"
+maplit = "*"

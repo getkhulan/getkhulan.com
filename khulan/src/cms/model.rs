@@ -1,98 +1,30 @@
 use crate::cms::content::Content;
+use crate::cms::field::Field;
 use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
 pub struct Model {
-    num: u16,
+    num: String,
     path: PathBuf,
     template: String,
     content: Content,
-}
-
-pub struct ModelBuilder {
-    num: u16,
-    path: PathBuf,
-    template: String,
-    content: Content,
-}
-
-impl ModelBuilder {
-    pub fn new() -> Self {
-        Self {
-            num: 0, // TODO: this would mess up sorting, num should be None by default
-            path: PathBuf::new(),
-            template: "".to_string(),
-            content: Content::new(None),
-        }
-    }
-
-    pub fn title(&mut self, title: &str) -> &mut Self {
-        self.content.field_mut("title", Some(title));
-        self
-    }
-
-    pub fn uuid(&mut self, uuid: &str) -> &mut Self {
-        self.content.field_mut("uuid", Some(uuid));
-        self
-    }
-
-    pub fn num(&mut self, num: u16) -> &mut Self {
-        self.num = num;
-        self
-    }
-
-    pub fn path(&mut self, path: PathBuf) -> &mut Self {
-        self.path = path;
-        self
-    }
-
-    pub fn template(&mut self, template: &str) -> &mut Self {
-        self.template = template.to_string();
-        self
-    }
-
-    pub fn content(&mut self, content: Content) -> &mut Self {
-        self.content.merge(content);
-        self
-    }
-
-    pub fn build(&self) -> Result<Model, &'static str> {
-        // if self.title.is_empty() || self.uuid.is_empty() || self.num.is_empty() {
-        //     return Err("title, uuid, and num are required");
-        // }
-        Ok(Model {
-            num: self.num.clone(),
-            path: self.path.clone(),
-            template: self.template.to_string(),
-            content: self.content.clone(),
-        })
-    }
+    // site: &'static Site // TODO: this is a circular dependency?
 }
 
 impl Model {
-    pub fn build() -> ModelBuilder {
-        ModelBuilder::new()
-    }
-
     pub fn title(&self) -> &str {
-        match self.content.field("title") {
-            Some(field) => field.value(),
-            None => "",
-        }
+        self.content.fields.get("title").unwrap().value()
     }
 
     pub fn uuid(&self) -> &str {
-        match self.content.field("uuid") {
-            Some(field) => field.value(),
-            None => "",
-        }
+        self.content.fields.get("uuid").unwrap().value()
     }
 
     pub fn path(&self) -> &PathBuf {
         &self.path
     }
 
-    pub fn num(&self) -> &u16 {
+    pub fn num(&self) -> &str {
         &self.num
     }
 
@@ -101,7 +33,106 @@ impl Model {
     }
 
     pub fn url(&self) -> String {
-        format!("/{}", self.path.to_string_lossy()) // TODO: prefix with site url
+        format!(
+            "{}/{}",
+            "http:://localhost:8000".to_string(),
+            self.path.to_string_lossy()
+        )
+        // TODO: add url from site()
+        // format!("{}/{}", self.site.url(), self.path.to_string_lossy())
+    }
+}
+
+pub struct ModelBuilder {
+    num: String,
+    path: PathBuf,
+    template: String,
+    content: Content,
+}
+
+impl ModelBuilder {
+    pub fn new() -> Self {
+        Self {
+            num: "".to_string(),
+            path: PathBuf::new(),
+            template: "".to_string(),
+            content: Content::new(None),
+        }
+    }
+
+    pub fn title(&mut self, title: &str) -> &mut Self {
+        self.content
+            .fields
+            .entry("title".to_string())
+            .or_insert_with(|| Field::new("title", None))
+            .set_value(title.to_string());
+        self
+    }
+
+    pub fn uuid(&mut self, uuid: &str) -> &mut Self {
+        self.content
+            .fields
+            .entry("uuid".to_string())
+            .or_insert_with(|| Field::new("uuid", None))
+            .set_value(uuid.to_string());
+        self
+    }
+
+    pub fn num(&mut self, num: &str) -> &mut Self {
+        self.num = num.to_string();
+        self
+    }
+
+    pub fn path(&mut self, path: PathBuf) -> &mut Self {
+        self.path = path.clone();
+        self
+    }
+
+    pub fn template(&mut self, template: &str) -> &mut Self {
+        self.template = template.to_string();
+        self
+    }
+
+    pub fn content(&mut self, content: &Content) -> &mut Self {
+        self.content.merge(content);
+
+        // if not has uuid in content then set the path
+        self.content
+            .fields
+            .entry("uuid".to_string())
+            .or_insert_with(|| {
+                Field::new(
+                    "uuid",
+                    Some(self.path.to_string_lossy().to_string().as_str()),
+                )
+            });
+
+        self
+    }
+
+    /*
+    pub fn build(&self) -> Result<Model, String> {
+        for field in vec!["title".to_string(), "uuid".to_string()] {
+            if self.content.fields.get(&field).is_none() {
+                return Err(format!("{} is required", field));
+            }
+        }
+
+        Ok(Model {
+            num: self.num.clone(),
+            path: self.path.clone(),
+            template: self.template.to_string(),
+            content: self.content.clone(),
+        })
+    } */
+
+    pub fn build(&self) -> Model {
+        Model {
+            num: self.num.clone(),
+            path: self.path.clone(),
+            template: self.template.to_string(),
+            content: self.content.clone(),
+        }
     }
 }
 
@@ -111,14 +142,15 @@ mod tests {
 
     #[test]
     fn it_works() {
-        let model = Model::build()
+        let model = ModelBuilder::new()
             .title("Hello, World!")
+            .path(PathBuf::from("/hello-world"))
             .uuid("123")
-            .num(1)
-            .build()
-            .unwrap();
+            .num("1")
+            .build();
+
         assert_eq!(model.title(), "Hello, World!");
         assert_eq!(model.uuid(), "123");
-        assert_eq!(*model.num(), 1);
+        assert_eq!(model.num(), "1");
     }
 }

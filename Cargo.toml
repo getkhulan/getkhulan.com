@@ -8,3 +8,4 @@ rocket = "0.5.1"
 khulan = { path = "./khulan", features = ["content_folder", "robots_txt", "sitemap_xml"] } # TODO: use the external crate
 maud = { version = "0.26.0", features = ["rocket"] }
 rocket_dyn_templates = { version = "0.2.0", features = ["handlebars"] }
+url = "2.5.2"

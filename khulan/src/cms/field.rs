@@ -1,8 +1,8 @@
 #[derive(Debug, Clone)]
 pub struct Field {
-    name: String,
+    pub name: String,
     // kind: String,
-    value: String,
+    pub value: String,
 }
 
 impl Field {
@@ -22,14 +22,8 @@ impl Field {
         &self.value
     }
 
-    pub fn set_value(&mut self, value: Option<&str>) -> &str {
-        match value {
-            Some(value) => {
-                self.value = value.to_string();
-                &self.value
-            }
-            None => &self.value,
-        }
+    pub fn set_value(&mut self, value: String) {
+        self.value = value;
     }
 
     pub fn to_int(&self) -> i32 {
@@ -65,14 +59,16 @@ mod tests_field {
     #[test]
     fn it_works() {
         let field = Field::new("title", Some("Hello, World!"));
+        assert_eq!(field.name, "title");
         assert_eq!(field.name(), "title");
+        assert_eq!(field.value, "Hello, World!");
         assert_eq!(field.value(), "Hello, World!");
     }
 
     #[test]
     fn it_sets_value() {
         let mut field = Field::new("title", None);
-        field.set_value(Some("Hello, World!"));
+        field.value = "Hello, World!".to_string();
         assert_eq!(field.value(), "Hello, World!");
     }
 }

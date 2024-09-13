@@ -1,16 +1,14 @@
-use crate::cms::content::Content;
-use crate::cms::model::Model;
 use crate::cms::site::Site;
 use rocket::{Config, State};
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, RwLock};
 
 #[get("/<path..>")]
 pub fn index(path: PathBuf, site: &State<Arc<RwLock<Site>>>) -> String {
     let site = site.read().unwrap();
-    let page = site.page(&path.to_string_lossy());
+    let page = site.pages.get(&path.to_string_lossy().to_string());
     match page {
-        Some(page) => page.model().title().to_string(),
+        Some(page) => page.model.title().to_string(),
         None => String::from("404"),
     }
 
