@@ -9,7 +9,7 @@ impl Field {
     // change value into Option<&str>
     pub fn new(name: &str, value: Option<&str>) -> Self {
         Self {
-            name: name.to_string(),
+            name: name.to_string().trim().to_lowercase(),
             value: value.unwrap_or("").to_string(),
         }
     }
@@ -22,8 +22,8 @@ impl Field {
         &self.value
     }
 
-    pub fn set_value(&mut self, value: String) {
-        self.value = value;
+    pub fn set_value(&mut self, value: &str) {
+        self.value = value.to_string();
     }
 
     pub fn to_int(&self) -> i32 {
@@ -45,11 +45,6 @@ impl Field {
     pub fn to_vec(&self) -> Vec<String> {
         self.value.split(",").map(|s| s.to_string()).collect()
     }
-
-    // pub fn to_map(&self) -> Vec<(String, String)> {
-    //    // TODO: it could be yaml or json, detect and parse then return map
-    //      vec![]
-    // }
 }
 
 #[cfg(test)]
@@ -58,7 +53,7 @@ mod tests_field {
 
     #[test]
     fn it_works() {
-        let field = Field::new("title", Some("Hello, World!"));
+        let field = Field::new("Title", Some("Hello, World!"));
         assert_eq!(field.name, "title");
         assert_eq!(field.name(), "title");
         assert_eq!(field.value, "Hello, World!");

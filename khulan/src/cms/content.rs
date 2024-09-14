@@ -1,8 +1,6 @@
 use super::field::Field;
 use std::collections::HashMap;
 
-use yaml_rust::YamlLoader;
-
 #[derive(Debug, Clone)]
 pub struct Content {
     pub fields: HashMap<String, Field>,
@@ -17,20 +15,6 @@ impl Content {
 
     pub fn merge(&mut self, content: &Content) {
         self.fields.extend(content.fields.clone());
-    }
-
-    #[cfg(feature = "kirby")]
-    pub fn load_txt(&mut self, txt: &str) {
-        for yml in txt.split("----\n") {
-            for data in YamlLoader::load_from_str(yml).unwrap() {
-                data.as_hash().unwrap().iter().for_each(|(key, value)| {
-                    let name = key.as_str().unwrap().to_lowercase();
-                    let value = value.as_str().unwrap().trim();
-                    let fname = key.as_str().unwrap();
-                    self.fields.insert(name, Field::new(fname, Some(value)));
-                });
-            }
-        }
     }
 }
 

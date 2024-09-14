@@ -1,6 +1,4 @@
-use crate::cms::content::Content;
-use crate::cms::model::Model;
-use crate::database::kirby::Kirby;
+use crate::cms::model::{Model, ModelKind};
 use crate::database::{Database, DatabaseBuilder};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -10,12 +8,11 @@ use url::Url;
 pub struct Site {
     dir: PathBuf, // TODO: refactor to roots hashmap
     url: Url,
-    pub content: Content,
     pub models: HashMap<String, Model>,
 }
 
 impl Site {
-    pub async fn new(
+    pub fn new(
         models: Option<HashMap<String, Model>>,
         dir: Option<PathBuf>,
         url: Option<Url>,
@@ -23,7 +20,6 @@ impl Site {
         Self {
             dir: dir.unwrap_or(PathBuf::from("")),
             url: url.unwrap_or(Url::parse("http://localhost:8000").unwrap()),
-            content: Content::new(None),
             models: models.unwrap_or(HashMap::new()),
         }
     }
@@ -50,32 +46,55 @@ impl Site {
         }
     }
 
-    pub fn page(&self, search: &str) -> Option<&Model> {
-        let mut search = search.trim_matches('/');
-        search = match search {
-            "home" => "", // TODO: make this configurable
-            _ => search,
-        };
-        self.models
-            .get(search)
-            .or_else(|| self.models.values().find(|model| model.uuid() == search))
+    #[cfg(feature = "multi_language")]
+    fn map_home_to_empty_route(&self, search: &str) -> String {
+        let search = search.trim_matches('/').to_string();
+        if search.chars().filter(|&c| c == '/').count() == 0 {
+            format!("{}/{}", search, "home") // TODO: make this configurable
+        } else {
+            search
+        }
     }
 
-    pub fn file(&self, search: &str) -> Option<&Model> {
+    #[cfg(not(feature = "multi_language"))]
+    fn map_home_to_empty_route(&self, search: &str) -> String {
+        let search = search.trim_matches('/').to_string();
+        search = match search {
+            "" => "home", // TODO: make this configurable
+            _ => search,
+        };
+    }
+
+    pub fn page(&self, search: &str, lang: Option<&str>) -> Option<&Model> {
+        let search = self.map_home_to_empty_route(search);
+
+        match lang {
+            Some(lang) => self.models.values().find(|model| {
+                model.language() == lang
+                    && model.kind() == &ModelKind::Page
+                    && (model.path() == search || model.uuid() == search)
+            }),
+            None => self.models.get(search.as_str()).or_else(|| {
+                self.models.values().find(|model| {
+                    model.kind() == &ModelKind::Page
+                        && (model.path() == search || model.uuid() == search)
+                })
+            }),
+        }
+    }
+
+    pub fn find(&self, search: &str) -> Option<&Model> {
         let search = search.trim_matches('/');
-        self.models.get(search).or_else(|| {
-            self.models
-                .values()
-                .find(|model| model.path().to_string_lossy().to_string() == search)
-        })
+        self.models
+            .get(search)
+            .or_else(|| self.models.values().find(|model| model.path() == search))
     }
 }
 
 pub struct SiteBuilder {
     dir: PathBuf,
     url: Url,
-    content: Content,
-    pages: HashMap<String, Model>,
+    models: HashMap<String, Model>,
 }
 
 impl SiteBuilder {
@@ -83,8 +102,7 @@ impl SiteBuilder {
         Self {
             dir: PathBuf::new(),
             url: Url::parse("http://localhost:8000").unwrap(),
-            content: Content::new(None),
-            pages: HashMap::new(),
+            models: HashMap::new(),
         }
     }
 
@@ -98,13 +116,8 @@ impl SiteBuilder {
         self
     }
 
-    pub fn content(&mut self, content: Content) -> &mut Self {
-        self.content = content;
-        self
-    }
-
-    pub fn pages(&mut self, pages: HashMap<String, Model>) -> &mut Self {
-        self.pages = pages;
+    pub fn models(&mut self, models: HashMap<String, Model>) -> &mut Self {
+        self.models = models;
         self
     }
 
@@ -112,8 +125,7 @@ impl SiteBuilder {
         Site {
             dir: self.dir.clone(),
             url: self.url.clone(),
-            content: self.content.clone(),
-            models: self.pages.clone(),
+            models: self.models.clone(),
         }
     }
 }
@@ -129,11 +141,11 @@ mod tests {
             .title("Hello, World!")
             .uuid("1234")
             .num("1")
-            .path(PathBuf::from("/hello-world"))
+            .path("/hello-world")
             .template("default")
             .build();
         let site = SiteBuilder::new()
-            .pages(hashmap! {
+            .models(hashmap! {
                 "1234".to_string() => model
             })
             .build();
@@ -146,15 +158,15 @@ mod tests {
             .title("Hello, World!")
             .uuid("1234")
             .num("1")
-            .path(PathBuf::from("/hello-world"))
+            .path("/hello-world")
             .template("default")
             .build();
         let site = SiteBuilder::new()
-            .pages(hashmap! {
+            .models(hashmap! {
                 "123.4".to_string() => model
             })
             .build();
-        let page = site.page("123.4");
+        let page = site.page("123.4", None);
         assert_eq!(page.unwrap().uuid(), "1234");
     }
 
@@ -164,11 +176,11 @@ mod tests {
             .title("Hello, World!")
             .uuid("1234")
             .num("1")
-            .path(PathBuf::from("/hello-world"))
+            .path("/hello-world")
             .template("default")
             .build();
         let mut site = SiteBuilder::new()
-            .pages(hashmap! {
+            .models(hashmap! {
                 "1234".to_string() => model
             })
             .build();
@@ -177,7 +189,7 @@ mod tests {
             .title("Hello, World!")
             .uuid("1234")
             .num("1")
-            .path(PathBuf::from("/hello-world"))
+            .path("/hello-world")
             .template("default")
             .build();
         site.models.extend(hashmap! {

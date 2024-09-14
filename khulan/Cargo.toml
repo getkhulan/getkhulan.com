@@ -7,7 +7,8 @@ edition = "2021"
 kirby = ["tokio", "yaml-rust"]
 robots_txt = ["rocket"]
 sitemap_xml = ["rocket"]
-default = ["kirby", "robots_txt", "sitemap_xml"]
+multi_language = []
+default = ["multi_language", "kirby", "robots_txt", "sitemap_xml"]
 
 [dependencies]
 rocket = { version = "*", optional = true }

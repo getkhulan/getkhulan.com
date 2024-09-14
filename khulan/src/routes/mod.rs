@@ -6,7 +6,7 @@ use std::sync::{Arc, RwLock};
 #[get("/<path..>")]
 pub fn index(path: PathBuf, site: &State<Arc<RwLock<Site>>>) -> String {
     let site = site.read().unwrap();
-    let page = site.page(&path.to_string_lossy().to_string());
+    let page = site.page(&path.to_string_lossy().to_string(), None);
     match page {
         Some(page) => page.title().to_string(),
         None => String::from("404"),
