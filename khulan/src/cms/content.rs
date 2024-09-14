@@ -19,7 +19,7 @@ impl Content {
         self.fields.extend(content.fields.clone());
     }
 
-    #[cfg(feature = "content_folder")]
+    #[cfg(feature = "kirby")]
     pub fn load_txt(&mut self, txt: &str) {
         for yml in txt.split("----\n") {
             for data in YamlLoader::load_from_str(yml).unwrap() {

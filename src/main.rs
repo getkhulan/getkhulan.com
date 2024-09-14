@@ -33,13 +33,13 @@ fn tmaud() -> Markup {
 }
 
 #[launch]
-async fn rocket() -> _ {
+fn rocket() -> _ {
     let mut site = site()
         .dir(std::env::current_dir().unwrap())
         .url(Url::parse("http://localhost:8000").unwrap()) // TODO: get from rocket?!
         .build();
 
-    site.load().await;
+    site.load();
 
     rocket::build()
         .manage(Arc::new(RwLock::new(site)))

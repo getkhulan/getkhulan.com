@@ -1,10 +1,9 @@
 use crate::cms::content::Content;
-use crate::cms::model::ModelBuilder;
-use crate::cms::page::Page;
+use crate::cms::model::Model;
+use crate::database::kirby::Kirby;
+use crate::database::{Database, DatabaseBuilder};
 use std::collections::HashMap;
 use std::path::PathBuf;
-use tokio::fs;
-use tokio::io::AsyncReadExt;
 use url::Url;
 
 #[derive(Debug)]
@@ -12,13 +11,12 @@ pub struct Site {
     dir: PathBuf, // TODO: refactor to roots hashmap
     url: Url,
     pub content: Content,
-    pub pages: HashMap<String, Page>,
-    // TODO: add Files
+    pub models: HashMap<String, Model>,
 }
 
 impl Site {
     pub async fn new(
-        pages: Option<HashMap<String, Page>>,
+        models: Option<HashMap<String, Model>>,
         dir: Option<PathBuf>,
         url: Option<Url>,
     ) -> Self {
@@ -26,77 +24,50 @@ impl Site {
             dir: dir.unwrap_or(PathBuf::from("")),
             url: url.unwrap_or(Url::parse("http://localhost:8000").unwrap()),
             content: Content::new(None),
-            pages: pages.unwrap_or(HashMap::new()),
+            models: models.unwrap_or(HashMap::new()),
         }
+    }
+
+    pub fn dir(&self) -> &PathBuf {
+        &self.dir
     }
 
     pub fn url(&self) -> &Url {
         &self.url
     }
 
-    pub async fn load(&mut self) {
-        if self.pages.is_empty() == false {
-            return;
+    pub fn load(&mut self) -> bool {
+        if !self.models.is_empty() {
+            return false;
         }
 
-        #[cfg(feature = "content_folder")]
-        self.load_from_kirby().await.unwrap();
-    }
-
-    pub fn page(&self, search: &str) -> Option<&Page> {
-        self.pages
-            .get(search)
-            .or_else(|| self.pages.values().find(|page| page.model.uuid() == search))
-    }
-
-    #[cfg(feature = "content_folder")]
-    async fn load_from_kirby(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        // TODO: make the content folder configurable
-        let path = PathBuf::from(format!("{}/storage/content", self.dir.to_str().unwrap()));
-        let p = path.clone();
-        println!("{:#?}", path.clone());
-        if path.exists() == false {
-            return Err("Path does not exist".into());
-        }
-
-        let mut entries = fs::read_dir(path).await?;
-
-        // TODO: make this recursive
-        while let Some(entry) = entries.next_entry().await? {
-            let file_path = entry.path();
-            println!("{:#?}", file_path.clone());
-
-            // Check if the entry is a file
-            // TODO: only load those that will be page objects
-            if file_path.is_file() && file_path.extension().unwrap() == "txt" {
-                let mut file = fs::File::open(&file_path).await?;
-                let mut contents = String::new();
-                file.read_to_string(&mut contents).await?;
-
-                // TODO: convert to builder pattern
-                let mut content = Content::new(None);
-                content.load_txt(contents.as_str());
-
-                // TODO: this should remove the filename as well
-                // TODO: handle site.en.txt
-                let rel_path = file_path
-                    .strip_prefix(p.clone())
-                    .ok()
-                    .map(PathBuf::from)
-                    .unwrap();
-                let model = ModelBuilder::new()
-                    .path(rel_path) // TODO: make it relative to content folder
-                    .template("default") // TODO: get the template
-                    .content(&content)
-                    .build();
-                let page = Page::new(model);
-                println!("{:#?}", page.clone());
-                self.pages
-                    .insert(page.model.path().to_string_lossy().to_string(), page);
+        match DatabaseBuilder::new().build().load(self) {
+            Ok(_) => true,
+            Err(e) => {
+                eprintln!("Error loading database: {}", e); // Print the error to the terminal
+                false
             }
         }
+    }
 
-        Ok(())
+    pub fn page(&self, search: &str) -> Option<&Model> {
+        let mut search = search.trim_matches('/');
+        search = match search {
+            "home" => "", // TODO: make this configurable
+            _ => search,
+        };
+        self.models
+            .get(search)
+            .or_else(|| self.models.values().find(|model| model.uuid() == search))
+    }
+
+    pub fn file(&self, search: &str) -> Option<&Model> {
+        let search = search.trim_matches('/');
+        self.models.get(search).or_else(|| {
+            self.models
+                .values()
+                .find(|model| model.path().to_string_lossy().to_string() == search)
+        })
     }
 }
 
@@ -104,7 +75,7 @@ pub struct SiteBuilder {
     dir: PathBuf,
     url: Url,
     content: Content,
-    pages: HashMap<String, Page>,
+    pages: HashMap<String, Model>,
 }
 
 impl SiteBuilder {
@@ -132,7 +103,7 @@ impl SiteBuilder {
         self
     }
 
-    pub fn pages(&mut self, pages: HashMap<String, Page>) -> &mut Self {
+    pub fn pages(&mut self, pages: HashMap<String, Model>) -> &mut Self {
         self.pages = pages;
         self
     }
@@ -142,7 +113,7 @@ impl SiteBuilder {
             dir: self.dir.clone(),
             url: self.url.clone(),
             content: self.content.clone(),
-            pages: self.pages.clone(),
+            models: self.pages.clone(),
         }
     }
 }
@@ -161,13 +132,12 @@ mod tests {
             .path(PathBuf::from("/hello-world"))
             .template("default")
             .build();
-        let page = Page::new(model);
         let site = SiteBuilder::new()
             .pages(hashmap! {
-                "1234".to_string() => page
+                "1234".to_string() => model
             })
             .build();
-        assert_eq!(site.pages.len(), 1);
+        assert_eq!(site.models.len(), 1);
     }
 
     #[test]
@@ -179,14 +149,13 @@ mod tests {
             .path(PathBuf::from("/hello-world"))
             .template("default")
             .build();
-        let page = Page::new(model);
         let site = SiteBuilder::new()
             .pages(hashmap! {
-                "1234".to_string() => page
+                "123.4".to_string() => model
             })
             .build();
-        let page = site.page("1234");
-        assert_eq!(page.unwrap().model.uuid(), "1234");
+        let page = site.page("123.4");
+        assert_eq!(page.unwrap().uuid(), "1234");
     }
 
     #[test]
@@ -198,10 +167,9 @@ mod tests {
             .path(PathBuf::from("/hello-world"))
             .template("default")
             .build();
-        let page = Page::new(model);
         let mut site = SiteBuilder::new()
             .pages(hashmap! {
-                "1234".to_string() => page
+                "1234".to_string() => model
             })
             .build();
 
@@ -212,19 +180,20 @@ mod tests {
             .path(PathBuf::from("/hello-world"))
             .template("default")
             .build();
-        let page = Page::new(model);
-        site.pages.extend(hashmap! {
-            "1234".to_string() => page
+        site.models.extend(hashmap! {
+            "1234".to_string() => model
         });
-        assert_eq!(site.pages.len(), 1);
+        assert_eq!(site.models.len(), 1);
     }
 
-    #[tokio::test]
-    #[cfg(feature = "content_folder")]
-    async fn it_loads_from_kirby() {
+    #[test]
+    #[cfg(feature = "kirby")]
+    fn it_loads_from_kirby() {
         let mut site = SiteBuilder::new()
             .dir(PathBuf::from("/Users/bnomei/Sites/getkhulan-com"))
             .build();
-        assert_eq!(site.load_from_kirby().await.is_ok(), true);
+        assert_eq!(site.load(), true);
+        assert_eq!(site.models.len() > 0, true);
+        println!("{:?}", site.models);
     }
 }

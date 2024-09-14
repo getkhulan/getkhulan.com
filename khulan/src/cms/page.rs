@@ -1,6 +1,7 @@
 use crate::cms::model::Model;
 
 #[derive(Debug, Clone)]
+#[deprecated]
 pub struct Page {
     pub model: Model,
 }
