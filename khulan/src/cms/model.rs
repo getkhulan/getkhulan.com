@@ -1,6 +1,7 @@
 use crate::cms::content::Content;
 use crate::cms::field::Field;
 use crate::cms::site::Site;
+use std::path::PathBuf;
 use std::time::SystemTime;
 
 #[derive(Debug, Clone)]
@@ -79,10 +80,25 @@ impl Model {
     }
 
     // infer these from the path and num
-    // TODO: fn is_draft()
-    // TODO: fn is_unlisted()
-    // TODO: fn is_listed()
-    // TODO: fn is_published()
+    pub fn is_draft(&self) -> bool {
+        let root_path = PathBuf::from(&self.root);
+
+        if let Some(parent) = root_path.parent() {
+            parent.to_str().map_or(false, |p| p.contains("_drafts"))
+        } else {
+            false
+        }
+    }
+
+    fn is_unlisted(&self) -> bool {
+        self.num.is_empty()
+    }
+    fn is_listed(&self) -> bool {
+        !self.is_unlisted()
+    }
+    fn is_published(&self) -> bool {
+        !self.is_draft()
+    }
 
     pub fn parent(&self, site: &Site) -> Option<Model> {
         // Split the path by '/' and remove the last segment
@@ -255,5 +271,9 @@ mod tests {
         assert_eq!(*model.kind(), ModelKind::Page);
         assert_eq!(model.last_modified(), modified_at);
         assert_eq!(model.root(), "/some/fl/root");
+        assert_eq!(model.is_draft(), false);
+        assert_eq!(model.is_published(), true);
+        assert_eq!(model.is_unlisted(), false);
+        assert_eq!(model.is_listed(), true);
     }
 }
