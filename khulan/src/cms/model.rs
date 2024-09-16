@@ -51,12 +51,18 @@ impl Model {
         self.path.clone()
     }
 
-    pub(crate) fn last_modified(&self) -> SystemTime {
+    pub fn last_modified(&self) -> SystemTime {
         self.last_modified
     }
 
-    pub fn num(&self) -> &str {
-        &self.num
+    pub fn num(&self) -> Option<u16> {
+        if self.num.is_empty() {
+            return None;
+        }
+        match self.num.parse::<u16>() {
+            Ok(num) => Some(num),
+            Err(_) => None,
+        }
     }
 
     pub fn kind(&self) -> &ModelKind {
@@ -267,7 +273,7 @@ mod tests {
         assert_eq!(model.title(), "Hello, World!");
         assert_eq!(model.uuid(), "123");
         assert_eq!(model.language(), "en");
-        assert_eq!(model.num(), "1");
+        assert_eq!(model.num(), 1);
         assert_eq!(*model.kind(), ModelKind::Page);
         assert_eq!(model.last_modified(), modified_at);
         assert_eq!(model.root(), "/some/fl/root");
