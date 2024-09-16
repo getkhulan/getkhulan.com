@@ -10,8 +10,8 @@ pub struct Model {
     path: String,
     template: String,
     content: Content,
+    root: String,
     last_modified: SystemTime,
-    // site: &'static Site // TODO: this is a circular dependency?
 }
 
 impl Model {
@@ -28,11 +28,22 @@ impl Model {
 
     // NOTE: since path is used in hashmaps a key, it's better for convenience to return string here than a reference to a str
     pub fn path(&self) -> String {
+        let mut path = self.path.clone();
+        if path == "home" {
+            // TODO: make this configurable
+            path = "".to_string();
+        }
+        if self.kind == ModelKind::Site {
+            path = "$".to_string(); // hack to make site model not overlap with home
+        }
+
         // In multi-language mode, the path is prefixed with the language
         // because the path is used as a key in the site's models hashmap.
         // we want the path stored in the model to be the same for all languages.
         #[cfg(feature = "multi_language")]
-        return format!("{}/{}", self.language, self.path);
+        return format!("{}/{}", self.language, path)
+            .trim_matches('/')
+            .to_string();
 
         #[cfg(not(feature = "multi_language"))]
         self.path.clone()
@@ -56,6 +67,10 @@ impl Model {
 
     pub fn template(&self) -> &str {
         &self.template
+    }
+
+    pub fn root(&self) -> String {
+        self.root.clone()
     }
 
     pub fn url(&self) -> String {
@@ -82,6 +97,7 @@ pub struct ModelBuilder {
     template: String,
     content: Content,
     last_modified: SystemTime,
+    root: String,
 }
 
 impl ModelBuilder {
@@ -94,6 +110,7 @@ impl ModelBuilder {
             template: "".to_string(),
             content: Content::new(None),
             last_modified: SystemTime::now(),
+            root: "".to_string(),
         }
     }
 
@@ -146,6 +163,11 @@ impl ModelBuilder {
         self
     }
 
+    pub fn root(&mut self, root: &str) -> &mut Self {
+        self.root = root.to_string();
+        self
+    }
+
     pub fn content(&mut self, content: &Content) -> &mut Self {
         self.content.merge(content);
         self
@@ -161,10 +183,11 @@ impl ModelBuilder {
             num: self.num.clone(),
             kind: self.kind.clone(),
             language: self.language.clone(),
-            path: self.path.clone(),
+            path: self.path.clone().trim_matches('/').to_string(),
             template: self.template.to_string(),
             content: self.content.clone(),
             last_modified: self.last_modified,
+            root: self.root.clone(),
         }
     }
 }
@@ -184,15 +207,17 @@ mod tests {
             .path("/hello-world")
             .uuid("123")
             .num("1")
+            .root("/some/fl/root")
             .last_modified(modified_at)
             .build();
 
-        assert_eq!(model.path(), "/hello-world");
+        assert_eq!(model.path(), "en/hello-world");
         assert_eq!(model.title(), "Hello, World!");
         assert_eq!(model.uuid(), "123");
         assert_eq!(model.language(), "en");
         assert_eq!(model.num(), "1");
-        assert_eq!(model.kind(), &ModelKind::Page);
+        assert_eq!(*model.kind(), ModelKind::Page);
         assert_eq!(model.last_modified(), modified_at);
+        assert_eq!(model.root(), "/some/fl/root");
     }
 }

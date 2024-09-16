@@ -1,5 +1,5 @@
 use crate::cms::model::{Model, ModelKind};
-use crate::database::{Database, DatabaseBuilder};
+use crate::database::DatabaseBuilder;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use url::Url;
@@ -32,12 +32,15 @@ impl Site {
         &self.url
     }
 
-    pub fn load(&mut self) -> bool {
-        if !self.models.is_empty() {
+    pub fn load(&mut self, changes: Vec<String>) -> bool {
+        if !self.models.is_empty() && changes.is_empty() {
             return false;
         }
 
-        match DatabaseBuilder::new().build().load(self) {
+        let database = DatabaseBuilder::new().build();
+
+        // match DatabaseBuilder::new().build().load(self) {
+        match database.load(self, changes) {
             Ok(_) => true,
             Err(e) => {
                 eprintln!("Error loading database: {}", e); // Print the error to the terminal
@@ -46,37 +49,36 @@ impl Site {
         }
     }
 
-    #[cfg(feature = "multi_language")]
-    fn map_home_to_empty_route(&self, search: &str) -> String {
-        let search = search.trim_matches('/').to_string();
-        if search.chars().filter(|&c| c == '/').count() == 0 {
-            format!("{}/{}", search, "home") // TODO: make this configurable
-        } else {
-            search
+    pub fn changes(&self) -> Vec<String> {
+        let database = DatabaseBuilder::new().build();
+
+        database.changes(self)
+    }
+
+    pub fn model(&self, lang: Option<&str>) -> Option<&Model> {
+        match lang {
+            Some(lang) => self
+                .models
+                .values()
+                .find(|model| model.language() == lang && *model.kind() == ModelKind::Site),
+            None => self
+                .models
+                .values()
+                .find(|model| *model.kind() == ModelKind::Site),
         }
     }
 
-    #[cfg(not(feature = "multi_language"))]
-    fn map_home_to_empty_route(&self, search: &str) -> String {
-        let search = search.trim_matches('/').to_string();
-        search = match search {
-            "" => "home", // TODO: make this configurable
-            _ => search,
-        };
-    }
-
     pub fn page(&self, search: &str, lang: Option<&str>) -> Option<&Model> {
-        let search = self.map_home_to_empty_route(search);
-
+        let search = search.trim_matches('/');
         match lang {
             Some(lang) => self.models.values().find(|model| {
                 model.language() == lang
-                    && model.kind() == &ModelKind::Page
+                    && *model.kind() == ModelKind::Page
                     && (model.path() == search || model.uuid() == search)
             }),
-            None => self.models.get(search.as_str()).or_else(|| {
+            None => self.models.get(search).or_else(|| {
                 self.models.values().find(|model| {
-                    model.kind() == &ModelKind::Page
+                    *model.kind() == ModelKind::Page
                         && (model.path() == search || model.uuid() == search)
                 })
             }),
@@ -158,15 +160,17 @@ mod tests {
             .title("Hello, World!")
             .uuid("1234")
             .num("1")
-            .path("/hello-world")
+            .kind(&ModelKind::Page)
+            .path("/home")
             .template("default")
+            .language("en")
             .build();
         let site = SiteBuilder::new()
             .models(hashmap! {
                 "123.4".to_string() => model
             })
             .build();
-        let page = site.page("123.4", None);
+        let page = site.page("en", None);
         assert_eq!(page.unwrap().uuid(), "1234");
     }
 
@@ -204,7 +208,7 @@ mod tests {
         let mut site = SiteBuilder::new()
             .dir(PathBuf::from("/Users/bnomei/Sites/getkhulan-com"))
             .build();
-        assert_eq!(site.load(), true);
+        assert_eq!(site.load(vec![]), true);
         assert_eq!(site.models.len() > 0, true);
         println!("{:?}", site.models);
     }

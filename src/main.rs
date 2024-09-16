@@ -39,7 +39,7 @@ fn rocket() -> _ {
         .url(Url::parse("http://localhost:8000").unwrap()) // TODO: get from rocket?!
         .build();
 
-    site.load();
+    site.load(vec![]);
 
     rocket::build()
         .manage(Arc::new(RwLock::new(site)))

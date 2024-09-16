@@ -8,11 +8,13 @@ pub mod kirby;
 //pub mod sqlite;
 
 pub trait Database: Send + Sync + Debug {
-    fn load(&self, site: &mut Site) -> Result<(), DatabaseError>;
-    // refresh
-    // save
+    fn load(&self, site: &mut Site, changes: Vec<String>) -> Result<(), DatabaseError>;
+    fn changes(&self, site: &Site) -> Vec<String>;
+    // fn refresh(&self, site: & Site) -> Result<Vec<String>, DatabaseError>;
+    // TODO: save
 }
 
+#[derive(Debug)]
 pub struct DatabaseBuilder {}
 
 impl DatabaseBuilder {
@@ -25,6 +27,9 @@ impl DatabaseBuilder {
         Box::new(kirby::Kirby {})
     }
 }
+
+#[derive(Debug, Clone)]
+pub struct DatabaseState {}
 
 #[derive(Debug)]
 pub enum DatabaseError {

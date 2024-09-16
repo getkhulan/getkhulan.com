@@ -11,10 +11,10 @@ pub struct FileWatcher {
 }
 
 impl FileWatcher {
-    pub fn new(dir: PathBuf) -> Self {
+    pub fn new(dir: PathBuf, state: Option<HashMap<String, SystemTime>>) -> Self {
         Self {
             dir: dir.clone(),
-            state: HashMap::new(),
+            state: state.unwrap_or(HashMap::new()),
             changed_dirs: Vec::new(),
         }
     }
@@ -156,7 +156,7 @@ mod tests {
         writeln!(file, "Hello, world!").unwrap();
 
         // Initial watch
-        let mut watcher = FileWatcher::new(temp_dir_path.to_path_buf());
+        let mut watcher = FileWatcher::new(temp_dir_path.to_path_buf(), None);
         watcher.scan(None);
         assert_eq!(watcher.changes().len(), 0);
 
