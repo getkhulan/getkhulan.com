@@ -1,5 +1,6 @@
 use crate::cms::content::Content;
 use crate::cms::field::Field;
+use crate::cms::site::Site;
 use std::time::SystemTime;
 
 #[derive(Debug, Clone)]
@@ -71,6 +72,47 @@ impl Model {
 
     pub fn root(&self) -> String {
         self.root.clone()
+    }
+
+    pub fn modified(&self) -> SystemTime {
+        self.last_modified
+    }
+
+    // infer these from the path and num
+    // TODO: fn is_draft()
+    // TODO: fn is_unlisted()
+    // TODO: fn is_listed()
+    // TODO: fn is_published()
+
+    pub fn parent(&self, site: &Site) -> Option<Model> {
+        // Split the path by '/' and remove the last segment
+        let mut segments: Vec<&str> = self.path.split('/').collect();
+        if segments.pop().is_none() {
+            return None; // If there's no parent
+        }
+
+        // Join the remaining segments back into a parent path
+        let parent_path = segments.join("/");
+
+        // Search the models in the site to find the one with a matching path
+        let model = site.models.values().find(|model| model.path == parent_path);
+
+        match model {
+            None => None,
+            Some(m) => Some(m.clone()),
+        }
+    }
+
+    pub fn children(&self, site: &Site) -> Vec<Model> {
+        // let mut children = vec![];
+        site.models
+            .values()
+            .filter(|model| {
+                model.path.starts_with(&self.path) && model.path != self.path
+                // && model.path.split('/').count() == self.path.split('/').count() + 1
+            })
+            .map(|m| m.clone())
+            .collect()
     }
 
     pub fn url(&self) -> String {
@@ -151,12 +193,6 @@ impl ModelBuilder {
         self.kind = kind.clone();
         self
     }
-
-    // infer these from the path and num
-    // TODO: fn is_draft()
-    // TODO: fn is_unlisted()
-    // TODO: fn is_listed()
-    // TODO: fn is_published()
 
     pub fn template(&mut self, template: &str) -> &mut Self {
         self.template = template.to_string();

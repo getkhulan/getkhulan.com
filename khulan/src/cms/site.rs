@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use url::Url;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Site {
     dir: PathBuf, // TODO: refactor to roots hashmap
     url: Url,
@@ -12,6 +12,14 @@ pub struct Site {
 }
 
 impl Site {
+    pub fn stub() -> Self {
+        Self {
+            dir: PathBuf::from(""),
+            url: Url::parse("http://localhost:8000").unwrap(),
+            models: HashMap::new(),
+        }
+    }
+
     pub fn new(
         models: Option<HashMap<String, Model>>,
         dir: Option<PathBuf>,
@@ -211,5 +219,23 @@ mod tests {
         assert_eq!(site.load(vec![]), true);
         assert_eq!(site.models.len() > 0, true);
         println!("{:?}", site.models);
+    }
+
+    #[test]
+    fn it_can_have_a_parent_and_children() {
+        let mut site = SiteBuilder::new().build();
+
+        let parent = ModelBuilder::new().path("/parent").build();
+
+        let child = ModelBuilder::new().path("/parent/child").build();
+
+        site.models.insert(parent.path(), parent.clone());
+        site.models.insert(child.path(), child.clone());
+
+        let find_parent = child.parent(&site);
+        assert_eq!(find_parent.unwrap().uuid(), Some(&parent).unwrap().uuid());
+
+        let find_children = parent.children(&site);
+        assert_eq!(find_children.len(), 1);
     }
 }
