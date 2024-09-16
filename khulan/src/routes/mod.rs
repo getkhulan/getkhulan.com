@@ -9,7 +9,7 @@ pub fn index(path: PathBuf, site_state: &State<Arc<RwLock<Site>>>) -> String {
 
     // iterate between read and write locks to make requests that do not detect
     // changes to the site run faster and not block the site with the write lock
-    let mut changes;
+    let changes;
     {
         //  a read lock to check if the site needs refresh
         let site = site_state.read().unwrap();
