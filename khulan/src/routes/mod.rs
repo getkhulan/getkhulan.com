@@ -1,12 +1,13 @@
+use crate::cms::model::Model;
 use crate::cms::site::Site;
+use rocket::http::Status;
+use rocket::serde::json::Json;
 use rocket::{Config, State};
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 
 #[get("/<path..>")]
-pub fn index(path: PathBuf, site_state: &State<Arc<RwLock<Site>>>) -> String {
-    // println!("=====>>>>> {:?}", path);
-
+pub fn index(path: PathBuf, site_state: &State<Arc<RwLock<Site>>>) -> Result<String, Status> {
     // iterate between read and write locks to make requests that do not detect
     // changes to the site run faster and not block the site with the write lock
     let changes;
@@ -26,8 +27,37 @@ pub fn index(path: PathBuf, site_state: &State<Arc<RwLock<Site>>>) -> String {
     let page = site.page(&path.to_string_lossy().to_string(), None);
 
     match page {
-        Some(page) => page.title().to_string(),
-        None => String::from("404"),
+        Some(page) => Ok(page.title().to_string()),
+        None => Err(Status::NotFound),
+    }
+}
+
+#[get("/api/page/<search..>")]
+pub fn api_page(
+    search: PathBuf,
+    site_state: &State<Arc<RwLock<Site>>>,
+) -> Result<Json<Model>, Status> {
+    // iterate between read and write locks to make requests that do not detect
+    // changes to the site run faster and not block the site with the write lock
+    let changes;
+    {
+        //  a read lock to check if the site needs refresh
+        let site = site_state.read().unwrap();
+        changes = site.changes();
+        // println!("CHANGES: {:?}", changes.clone());
+    }
+
+    if changes.len() > 0 {
+        let mut site = site_state.write().unwrap();
+        site.load(changes);
+    }
+
+    let site = site_state.read().unwrap();
+    let page = site.page(&search.to_string_lossy().to_string(), None);
+
+    match page {
+        Some(page) => Ok(Json(page.clone())),
+        None => Err(Status::NotFound),
     }
 }
 

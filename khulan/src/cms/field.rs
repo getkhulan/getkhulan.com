@@ -1,6 +1,7 @@
+use rocket::serde::Serialize;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Field {
     pub name: String,
     // kind: String,

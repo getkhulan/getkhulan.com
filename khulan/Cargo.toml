@@ -4,17 +4,19 @@ version = "0.1.0"
 edition = "2021"
 
 [features]
-kirby = ["tokio", "yaml-rust", "walkdir", "tempfile"]
+kirby = ["tokio", "yaml-rust", "walkdir", "tempfile", "dotenvy"]
 robots_txt = ["rocket"]
 sitemap_xml = ["rocket"]
 multi_language = []
-default = ["multi_language", "kirby", "robots_txt", "sitemap_xml"]
+default = ["kirby", "robots_txt", "sitemap_xml"]
 
 [dependencies]
-rocket = { version = "*", optional = true }
+rocket = { version = "*", optional = true, features = ["json"] }
 tokio = { version = "*", optional = true }
 yaml-rust = { version = "*", optional = true }
 walkdir = { version = "*", optional = true }
 url = "*"
 maplit = "*"
+dotenvy = { version = "*", optional = true }
 tempfile = { version = "*", optional = true }
+serde = { version = "1.0.210", features = ["derive"] }

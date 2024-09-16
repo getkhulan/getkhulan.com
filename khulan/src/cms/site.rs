@@ -78,17 +78,17 @@ impl Site {
 
     pub fn page(&self, search: &str, lang: Option<&str>) -> Option<&Model> {
         let search = search.trim_matches('/');
+        println!("search: {}", search);
+        println!("models: {:?}", self.models.keys());
         match lang {
             Some(lang) => self.models.values().find(|model| {
                 model.language() == lang
                     && *model.kind() == ModelKind::Page
                     && (model.path() == search || model.uuid() == search)
             }),
-            None => self.models.get(search).or_else(|| {
-                self.models.values().find(|model| {
-                    *model.kind() == ModelKind::Page
-                        && (model.path() == search || model.uuid() == search)
-                })
+            None => self.models.values().find(|model| {
+                *model.kind() == ModelKind::Page
+                    && (model.path() == search || model.uuid() == search)
             }),
         }
     }

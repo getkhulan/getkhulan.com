@@ -1,9 +1,13 @@
 use crate::cms::content::Content;
 use crate::cms::field::Field;
+use crate::cms::model::ModelKind::File;
 use crate::cms::site::Site;
+use rocket::serde::Serialize;
 use std::path::PathBuf;
 use std::time::SystemTime;
 
+#[derive(Serialize)]
+#[serde(crate = "rocket::serde")]
 #[derive(Debug, Clone)]
 pub struct Model {
     num: String,
@@ -18,7 +22,10 @@ pub struct Model {
 
 impl Model {
     pub fn title(&self) -> &str {
-        self.content.fields.get("title").unwrap().value()
+        match self.content.fields.get("title") {
+            Some(title) => title.value(),
+            None => "",
+        }
     }
 
     pub fn uuid(&self) -> &str {
@@ -38,17 +45,23 @@ impl Model {
         if self.kind == ModelKind::Site {
             path = "$".to_string(); // hack to make site model not overlap with home
         }
+        if self.kind == ModelKind::File {
+            path = format!(
+                "{}/{}",
+                self.path,
+                PathBuf::from(&self.root)
+                    .file_name()
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
+            );
+        }
 
-        // In multi-language mode, the path is prefixed with the language
-        // because the path is used as a key in the site's models hashmap.
-        // we want the path stored in the model to be the same for all languages.
-        #[cfg(feature = "multi_language")]
-        return format!("{}/{}", self.language, path)
+        // the following works for both single and multi-language sites
+        // because of the trim and lang being "" for single language
+        format!("{}/{}", self.language, path)
             .trim_matches('/')
-            .to_string();
-
-        #[cfg(not(feature = "multi_language"))]
-        self.path.clone()
+            .to_string()
     }
 
     pub fn last_modified(&self) -> SystemTime {
@@ -57,11 +70,23 @@ impl Model {
 
     pub fn num(&self) -> Option<u16> {
         if self.num.is_empty() {
-            return None;
-        }
-        match self.num.parse::<u16>() {
-            Ok(num) => Some(num),
-            Err(_) => None,
+            if self.kind == File {
+                // try sort field, like for files
+                match self.content.fields.get("sort") {
+                    Some(sort) => match sort.value().parse::<u16>() {
+                        Ok(num) => Some(num),
+                        Err(_) => None,
+                    },
+                    None => None,
+                }
+            } else {
+                None
+            }
+        } else {
+            match self.num.parse::<u16>() {
+                Ok(num) => Some(num),
+                Err(_) => None,
+            }
         }
     }
 
@@ -74,7 +99,14 @@ impl Model {
     }
 
     pub fn template(&self) -> &str {
-        &self.template
+        if self.template.is_empty() {
+            match self.content.fields.get("template") {
+                Some(template) => template.value(),
+                None => "",
+            }
+        } else {
+            &self.template
+        }
     }
 
     pub fn root(&self) -> String {
@@ -144,7 +176,7 @@ impl Model {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Serialize, Debug, Clone, PartialEq)]
 pub enum ModelKind {
     Page,
     Site,
