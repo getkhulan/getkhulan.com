@@ -14,7 +14,7 @@ pub fn index(path: PathBuf, site_state: &State<Arc<RwLock<Site>>>) -> String {
         //  a read lock to check if the site needs refresh
         let site = site_state.read().unwrap();
         changes = site.changes();
-        println!("CHANGES: {:?}", changes.clone());
+        // println!("CHANGES: {:?}", changes.clone());
     }
 
     if changes.len() > 0 {
