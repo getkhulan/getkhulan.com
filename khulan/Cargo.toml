@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [features]
-kirby = ["tokio", "yaml-rust"]
+kirby = ["tokio", "yaml-rust", "walkdir", "tempfile"]
 robots_txt = ["rocket"]
 sitemap_xml = ["rocket"]
 multi_language = []
@@ -14,5 +14,7 @@ default = ["multi_language", "kirby", "robots_txt", "sitemap_xml"]
 rocket = { version = "*", optional = true }
 tokio = { version = "*", optional = true }
 yaml-rust = { version = "*", optional = true }
+walkdir = { version = "*", optional = true }
 url = "*"
 maplit = "*"
+tempfile = { version = "*", optional = true }

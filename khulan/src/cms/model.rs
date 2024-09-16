@@ -1,5 +1,6 @@
 use crate::cms::content::Content;
 use crate::cms::field::Field;
+use std::time::SystemTime;
 
 #[derive(Debug, Clone)]
 pub struct Model {
@@ -9,6 +10,7 @@ pub struct Model {
     path: String,
     template: String,
     content: Content,
+    last_modified: SystemTime,
     // site: &'static Site // TODO: this is a circular dependency?
 }
 
@@ -34,6 +36,10 @@ impl Model {
 
         #[cfg(not(feature = "multi_language"))]
         self.path.clone()
+    }
+
+    pub(crate) fn last_modified(&self) -> SystemTime {
+        self.last_modified
     }
 
     pub fn num(&self) -> &str {
@@ -75,6 +81,7 @@ pub struct ModelBuilder {
     path: String,
     template: String,
     content: Content,
+    last_modified: SystemTime,
 }
 
 impl ModelBuilder {
@@ -86,6 +93,7 @@ impl ModelBuilder {
             path: "".to_string(),
             template: "".to_string(),
             content: Content::new(None),
+            last_modified: SystemTime::now(),
         }
     }
 
@@ -143,6 +151,11 @@ impl ModelBuilder {
         self
     }
 
+    pub fn last_modified(&mut self, last_modified: SystemTime) -> &mut Self {
+        self.last_modified = last_modified;
+        self
+    }
+
     pub fn build(&self) -> Model {
         Model {
             num: self.num.clone(),
@@ -151,6 +164,7 @@ impl ModelBuilder {
             path: self.path.clone(),
             template: self.template.to_string(),
             content: self.content.clone(),
+            last_modified: self.last_modified,
         }
     }
 }
@@ -158,16 +172,19 @@ impl ModelBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::ops::Sub;
 
     #[test]
     fn it_works() {
+        let modified_at = SystemTime::now().sub(std::time::Duration::from_secs(60));
         let model = ModelBuilder::new()
-            .kind(ModelKind::Page)
+            .kind(&ModelKind::Page)
             .title("Hello, World!")
             .language("en")
             .path("/hello-world")
             .uuid("123")
             .num("1")
+            .last_modified(modified_at)
             .build();
 
         assert_eq!(model.path(), "/hello-world");
@@ -176,5 +193,6 @@ mod tests {
         assert_eq!(model.language(), "en");
         assert_eq!(model.num(), "1");
         assert_eq!(model.kind(), &ModelKind::Page);
+        assert_eq!(model.last_modified(), modified_at);
     }
 }
