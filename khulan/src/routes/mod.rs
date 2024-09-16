@@ -5,7 +5,7 @@ use std::sync::{Arc, RwLock};
 
 #[get("/<path..>")]
 pub fn index(path: PathBuf, site_state: &State<Arc<RwLock<Site>>>) -> String {
-    println!("=====>>>>> {:?}", path);
+    // println!("=====>>>>> {:?}", path);
 
     // iterate between read and write locks to make requests that do not detect
     // changes to the site run faster and not block the site with the write lock

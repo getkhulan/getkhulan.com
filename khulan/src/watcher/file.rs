@@ -109,7 +109,7 @@ impl FileWatcher {
                         if let Some(last_mod_time) = self.state.get(&file_path) {
                             if &modified != last_mod_time {
                                 // File has changed
-                                println!("File changed: {}", file_path);
+                                // println!("File changed: {}", file_path);
                                 return true;
                             } else {
                                 // File has not changed
@@ -117,7 +117,7 @@ impl FileWatcher {
                             }
                         } else {
                             // New file added
-                            println!("New file detected: {}", file_path);
+                            // println!("New file detected: {}", file_path);
                             return true;
                         }
                     }
@@ -128,7 +128,7 @@ impl FileWatcher {
         // Check if any expected files are missing
         for (file_path, _) in expected_files.iter() {
             if !fs::metadata(file_path).is_ok() {
-                println!("File missing: {}", file_path);
+                // println!("File missing: {}", file_path);
                 return true;
             }
         }
