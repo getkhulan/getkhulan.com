@@ -273,7 +273,7 @@ mod tests {
         assert_eq!(model.title(), "Hello, World!");
         assert_eq!(model.uuid(), "123");
         assert_eq!(model.language(), "en");
-        assert_eq!(model.num(), 1);
+        assert_eq!(model.num().unwrap(), 1);
         assert_eq!(*model.kind(), ModelKind::Page);
         assert_eq!(model.last_modified(), modified_at);
         assert_eq!(model.root(), "/some/fl/root");
