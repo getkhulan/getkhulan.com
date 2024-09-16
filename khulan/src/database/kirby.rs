@@ -159,10 +159,16 @@ impl Kirby {
             let file_path = entry.path();
 
             // Recurse into directories
-            if file_path.is_dir() {
+            if file_path.is_dir()
+                && file_path
+                    .to_str()
+                    .map_or(false, |p| p.contains("_versions"))
+            // K5: _versions is a directory that contains versioned content
+            {
                 Self::load_recursive(site, root_path, &file_path)?;
             } else if file_path.is_file()
                 && file_path.extension().and_then(|ext| ext.to_str()) == Some("txt")
+            // TODO: Add support for markdown files?
             {
                 // If it's a .txt file, read its contents
                 let mut file = fs::File::open(&file_path).map_err(DatabaseError::from)?;
