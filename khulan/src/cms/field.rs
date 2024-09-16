@@ -1,3 +1,5 @@
+use std::time::{SystemTime, UNIX_EPOCH};
+
 #[derive(Debug, Clone)]
 pub struct Field {
     pub name: String,
@@ -44,6 +46,13 @@ impl Field {
 
     pub fn to_vec(&self) -> Vec<String> {
         self.value.split(",").map(|s| s.to_string()).collect()
+    }
+
+    pub fn to_systemtime(&self) -> SystemTime {
+        match self.value.parse::<u64>() {
+            Ok(seconds) => UNIX_EPOCH + std::time::Duration::from_secs(seconds),
+            Err(_) => SystemTime::now(), // Fallback in case of parse failure
+        }
     }
 }
 
