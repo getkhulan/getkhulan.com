@@ -8,14 +8,20 @@ pub struct FileWatcher {
     dir: PathBuf,
     state: HashMap<String, SystemTime>,
     changed_dirs: Vec<String>,
+    extensions: Vec<String>,
 }
 
 impl FileWatcher {
-    pub fn new(dir: PathBuf, state: Option<HashMap<String, SystemTime>>) -> Self {
+    pub fn new(
+        dir: PathBuf,
+        state: Option<HashMap<String, SystemTime>>,
+        extensions: Option<Vec<String>>,
+    ) -> Self {
         Self {
             dir: dir.clone(),
             state: state.unwrap_or(HashMap::new()),
             changed_dirs: Vec::new(),
+            extensions: extensions.unwrap_or(Vec::new()),
         }
     }
 
@@ -48,6 +54,10 @@ impl FileWatcher {
             .filter_map(Result::ok)
         {
             if entry.file_type().is_file() {
+                if self.skip_file(&entry) {
+                    continue;
+                }
+
                 let file_path = entry.path().to_string_lossy().to_string();
 
                 // Check if file is missing, added, or has a different modification time
@@ -85,6 +95,23 @@ impl FileWatcher {
         self.changed_dirs.clone()
     }
 
+    fn skip_file(&self, entry: &DirEntry) -> bool {
+        // skip hidden files
+        if entry.file_name().to_string_lossy().starts_with(".") {
+            return true;
+        }
+
+        // skip files by extension
+        if !self.extensions.is_empty() {
+            if let Some(ext) = entry.path().extension() {
+                if !self.extensions.contains(&ext.to_string_lossy().to_string()) {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
     /// Checks if there are any changes within the directory's immediate files (no recursion).
     pub fn has_changes_in_directory(&mut self, dir: &DirEntry) -> bool {
         // list of all files that where supposed to be in the directory
@@ -101,6 +128,10 @@ impl FileWatcher {
             .filter_map(Result::ok)
         {
             if entry.file_type().is_file() {
+                if self.skip_file(&entry) {
+                    continue;
+                }
+
                 let file_path = entry.path().to_string_lossy().to_string();
 
                 // Check if file is missing, added, or has a different modification time
@@ -156,7 +187,7 @@ mod tests {
         writeln!(file, "Hello, world!").unwrap();
 
         // Initial watch
-        let mut watcher = FileWatcher::new(temp_dir_path.to_path_buf(), None);
+        let mut watcher = FileWatcher::new(temp_dir_path.to_path_buf(), None, None);
         watcher.scan(None);
         assert_eq!(watcher.changes().len(), 0);
 

@@ -109,6 +109,30 @@ impl Model {
         }
     }
 
+    pub fn is_page(&self) -> bool {
+        self.kind == ModelKind::Page
+    }
+
+    pub fn is_site(&self) -> bool {
+        self.kind == ModelKind::Site
+    }
+
+    pub fn is_file(&self) -> bool {
+        self.kind == ModelKind::File
+    }
+
+    pub fn is_user(&self) -> bool {
+        self.kind == ModelKind::User
+    }
+
+    pub fn file(&self) -> Option<String> {
+        if self.kind == ModelKind::File {
+            Some(self.root.trim_end_matches(".txt").to_string())
+        } else {
+            None
+        }
+    }
+
     pub fn root(&self) -> String {
         self.root.clone()
     }

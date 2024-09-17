@@ -77,7 +77,8 @@ impl Site {
     }
 
     pub fn page(&self, search: &str, lang: Option<&str>) -> Option<&Model> {
-        let search = search.trim_matches('/');
+        // + is from api calls
+        let search = search.replace("+", "/").trim_matches('/').to_string();
         // println!("search: {}", search);
         // println!("models: {:?}", self.models.keys());
         match lang {

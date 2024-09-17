@@ -32,7 +32,7 @@ pub fn index(path: PathBuf, site_state: &State<Arc<RwLock<Site>>>) -> Result<Str
     }
 }
 
-#[get("/api/page/<search..>")]
+#[get("/api/pages/<search..>")]
 pub fn api_page(
     search: PathBuf,
     site_state: &State<Arc<RwLock<Site>>>,

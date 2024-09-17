@@ -68,6 +68,8 @@ impl Kirby {
             num = "".to_string(); // get from content field "sort"
         }
 
+        // println!("--> {:?} ==== {}", filename, file_path.to_string_lossy());
+
         Some(
             ModelBuilder::new()
                 .kind(&kind)
@@ -266,6 +268,11 @@ impl Database for Kirby {
             .map(|(_, model)| (model.root(), model.last_modified()))
             .collect();
 
-        FileWatcher::new(root_path, Some(state_from_models)).changes()
+        FileWatcher::new(
+            root_path,
+            Some(state_from_models),
+            Some(vec!["txt".to_string()]), // kirby txt files only
+        )
+        .changes()
     }
 }
