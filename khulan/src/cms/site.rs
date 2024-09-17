@@ -78,8 +78,8 @@ impl Site {
 
     pub fn page(&self, search: &str, lang: Option<&str>) -> Option<&Model> {
         let search = search.trim_matches('/');
-        println!("search: {}", search);
-        println!("models: {:?}", self.models.keys());
+        // println!("search: {}", search);
+        // println!("models: {:?}", self.models.keys());
         match lang {
             Some(lang) => self.models.values().find(|model| {
                 model.language() == lang
@@ -218,7 +218,7 @@ mod tests {
             .build();
         assert_eq!(site.load(vec![]), true);
         assert_eq!(site.models.len() > 0, true);
-        println!("{:?}", site.models);
+        // println!("{:?}", site.models);
     }
 
     #[test]
