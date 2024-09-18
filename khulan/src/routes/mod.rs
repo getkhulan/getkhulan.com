@@ -20,12 +20,13 @@ pub fn index(path: PathBuf, site_state: &State<Arc<RwLock<Site>>>) -> Result<Str
 
     if changes.len() > 0 {
         let mut site = site_state.write().unwrap();
-        site.load(changes);
+        site.load(&changes);
     }
 
     let site = site_state.read().unwrap();
     let page = site.page(&path.to_string_lossy().to_string(), None);
 
+    // TODO: change to template as currently this is preventing the static files to be served
     match page {
         Some(page) => Ok(page.title().to_string()),
         None => Err(Status::NotFound),
@@ -49,8 +50,10 @@ pub fn api_page(
 
     if changes.len() > 0 {
         let mut site = site_state.write().unwrap();
-        site.load(changes);
+        site.load(&changes);
     }
+
+    // TODO: this does include the root of the file exposing the dir structure !!!
 
     let site = site_state.read().unwrap();
     let page = site.page(&search.to_string_lossy().to_string(), None);
