@@ -2,7 +2,7 @@ use super::field::Field;
 use serde::Serialize;
 use std::collections::HashMap;
 
-#[derive(Debug, Clone, Serialize, Default)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Content {
     pub fields: HashMap<String, Field>,
 }
