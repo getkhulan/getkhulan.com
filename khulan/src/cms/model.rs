@@ -194,7 +194,7 @@ impl Model {
     }
 
     pub fn url(&self) -> String {
-        format!("{}/{}", "http:://localhost:8000".to_string(), self.path)
+        format!("http:://localhost:8000/{}", self.path)
         // TODO: add url from site()
         // format!("{}/{}", self.site.url(), self.path.to_string_lossy())
     }
