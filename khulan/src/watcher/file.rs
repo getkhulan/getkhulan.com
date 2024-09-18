@@ -13,15 +13,15 @@ pub struct FileWatcher {
 
 impl FileWatcher {
     pub fn new(
-        dir: PathBuf,
-        state: Option<HashMap<String, SystemTime>>,
-        extensions: Option<Vec<String>>,
+        dir: &PathBuf,
+        state: Option<&HashMap<String, SystemTime>>,
+        extensions: Option<&Vec<String>>,
     ) -> Self {
         Self {
             dir: dir.clone(),
-            state: state.unwrap_or(HashMap::new()),
+            state: state.unwrap_or(&HashMap::new()).clone(),
             changed_dirs: Vec::new(),
-            extensions: extensions.unwrap_or(Vec::new()),
+            extensions: extensions.unwrap_or(&Vec::new()).clone(),
         }
     }
 
@@ -39,13 +39,13 @@ impl FileWatcher {
 
     pub fn scan_each(&mut self, changes: &Vec<String>) {
         changes.iter().for_each(|dir| {
-            self.scan(Some(PathBuf::from(dir)));
+            self.scan(Some(&PathBuf::from(dir)));
         });
     }
 
-    pub fn scan(&mut self, dir: Option<PathBuf>) {
+    pub fn scan(&mut self, dir: Option<&PathBuf>) {
         self.state = HashMap::new();
-        let dir = dir.unwrap_or(self.dir.clone());
+        let dir = dir.unwrap_or(&self.dir);
 
         // Iterate over the files in the current directory (skip subdirectories)
         for entry in WalkDir::new(dir)
@@ -187,7 +187,7 @@ mod tests {
         writeln!(file, "Hello, world!").unwrap();
 
         // Initial watch
-        let mut watcher = FileWatcher::new(temp_dir_path.to_path_buf(), None, None);
+        let mut watcher = FileWatcher::new(&temp_dir_path.to_path_buf(), None, None);
         watcher.scan(None);
         assert_eq!(watcher.changes().len(), 0);
 

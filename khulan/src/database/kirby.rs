@@ -269,9 +269,9 @@ impl Database for Kirby {
             .collect();
 
         FileWatcher::new(
-            root_path,
-            Some(state_from_models),
-            Some(vec!["txt".to_string()]), // kirby txt files only
+            &root_path,
+            Some(&state_from_models),
+            Some(&vec!["txt".to_string()]), // kirby txt files only
         )
         .changes()
     }
