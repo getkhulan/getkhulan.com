@@ -16,6 +16,7 @@ pub struct Model {
     path: String,
     template: String,
     content: Content,
+    #[serde(skip)]
     root: String,
     last_modified: SystemTime,
 }

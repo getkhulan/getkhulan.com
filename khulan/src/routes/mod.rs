@@ -53,8 +53,6 @@ pub fn api_page(
         site.load(&changes);
     }
 
-    // TODO: this does include the root of the file exposing the dir structure !!!
-
     let site = site_state.read().unwrap();
     let page = site.page(&search.to_string_lossy().to_string(), None);
 
