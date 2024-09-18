@@ -12,14 +12,6 @@ pub struct Site {
 }
 
 impl Site {
-    pub fn stub() -> Self {
-        Self {
-            dir: PathBuf::from(""),
-            url: Url::parse("http://localhost:8000").unwrap(),
-            models: HashMap::new(),
-        }
-    }
-
     pub fn new(
         models: Option<HashMap<String, Model>>,
         dir: Option<PathBuf>,
@@ -40,7 +32,7 @@ impl Site {
         &self.url
     }
 
-    pub fn load(&mut self, changes: Vec<String>) -> bool {
+    pub fn load(&mut self, changes: &Vec<String>) -> bool {
         if !self.models.is_empty() && changes.is_empty() {
             return false;
         }
@@ -48,7 +40,7 @@ impl Site {
         let database = DatabaseBuilder::new().build();
 
         // match DatabaseBuilder::new().build().load(self) {
-        match database.load(self, changes) {
+        match database.load(self, changes.clone()) {
             Ok(_) => true,
             Err(e) => {
                 eprintln!("Error loading database: {}", e); // Print the error to the terminal
@@ -117,18 +109,18 @@ impl SiteBuilder {
         }
     }
 
-    pub fn url(&mut self, url: Url) -> &mut Self {
-        self.url = url;
+    pub fn url(&mut self, url: &Url) -> &mut Self {
+        self.url = url.clone();
         self
     }
 
-    pub fn dir(&mut self, dir: PathBuf) -> &mut Self {
-        self.dir = dir;
+    pub fn dir(&mut self, dir: &PathBuf) -> &mut Self {
+        self.dir = dir.clone();
         self
     }
 
     pub fn models(&mut self, models: HashMap<String, Model>) -> &mut Self {
-        self.models = models;
+        self.models = models.clone();
         self
     }
 
@@ -215,9 +207,9 @@ mod tests {
     #[cfg(feature = "kirby")]
     fn it_loads_from_kirby() {
         let mut site = SiteBuilder::new()
-            .dir(PathBuf::from("/Users/bnomei/Sites/getkhulan-com"))
+            .dir(&PathBuf::from("/Users/bnomei/Sites/getkhulan-com"))
             .build();
-        assert_eq!(site.load(vec![]), true);
+        assert_eq!(site.load(&vec![]), true);
         assert_eq!(site.models.len() > 0, true);
         // println!("{:?}", site.models);
     }

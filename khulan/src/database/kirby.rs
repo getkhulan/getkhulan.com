@@ -78,7 +78,7 @@ impl Kirby {
                 .path(&dir_path) // TODO: pages store the dir_path but files store the dir_path + filename
                 .template(&template)
                 .content(&content)
-                .last_modified(file_path.metadata().unwrap().modified().unwrap())
+                .last_modified(&file_path.metadata().unwrap().modified().unwrap())
                 .root(file_path.to_str()?)
                 .build(),
         )

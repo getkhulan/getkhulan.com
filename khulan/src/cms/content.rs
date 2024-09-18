@@ -8,9 +8,9 @@ pub struct Content {
 }
 
 impl Content {
-    pub fn new(fields: Option<HashMap<String, Field>>) -> Self {
+    pub fn new(fields: Option<&HashMap<String, Field>>) -> Self {
         Content {
-            fields: fields.unwrap_or(HashMap::new()),
+            fields: fields.cloned().unwrap_or_default(),
         }
     }
 
@@ -32,7 +32,7 @@ mod tests {
 
     #[test]
     fn it_can_have_fields() {
-        let content = Content::new(Some(hashmap! {
+        let content = Content::new(Some(&hashmap! {
             "title".to_string() => Field::new("title", Some("Hello, World!"))
         }));
         assert_eq!(content.fields.len(), 1);
@@ -50,7 +50,7 @@ mod tests {
     #[test]
     fn it_sets_fields() {
         let field = Field::new("title", Some("Hello, World!"));
-        let mut content = Content::new(Some(hashmap! {
+        let mut content = Content::new(Some(&hashmap! {
             "title".to_string() => field
         }));
         assert_eq!(content.fields.len(), 1);

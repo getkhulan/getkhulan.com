@@ -287,8 +287,8 @@ impl ModelBuilder {
         self
     }
 
-    pub fn last_modified(&mut self, last_modified: SystemTime) -> &mut Self {
-        self.last_modified = last_modified;
+    pub fn last_modified(&mut self, last_modified: &SystemTime) -> &mut Self {
+        self.last_modified = last_modified.clone();
         self
     }
 
@@ -322,7 +322,7 @@ mod tests {
             .uuid("123")
             .num("1")
             .root("/some/fl/root")
-            .last_modified(modified_at)
+            .last_modified(&modified_at)
             .build();
 
         assert_eq!(model.path(), "en/hello-world");
