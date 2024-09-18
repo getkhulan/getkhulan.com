@@ -10,6 +10,7 @@ use std::fmt::Debug;
 use std::fs;
 use std::io::Read;
 use std::path::PathBuf;
+use std::sync::{Arc, RwLock};
 use std::time::SystemTime;
 
 #[derive(Debug)]
@@ -17,15 +18,16 @@ pub struct Kirby {}
 
 impl Kirby {
     pub fn add_model_to_site(
-        site: &mut Site,
+        site: Arc<RwLock<Site>>,
         root_path: &PathBuf,
         file_path: &PathBuf,
         text: &str,
     ) {
-        let model = Self::model_from_string(root_path, file_path, text);
+        let model = Self::model_from_string(site.clone(), root_path, file_path, text);
 
         match model {
             Some(model) => {
+                let mut site = site.write().unwrap();
                 site.models.insert(model.path(), model);
             }
             None => {
@@ -38,6 +40,7 @@ impl Kirby {
     }
 
     pub fn model_from_string(
+        site: Arc<RwLock<Site>>,
         root_path: &PathBuf,
         file_path: &PathBuf,
         text: &str,
@@ -80,6 +83,7 @@ impl Kirby {
                 .content(&content)
                 .last_modified(&file_path.metadata().unwrap().modified().unwrap())
                 .root(file_path.to_str()?)
+                .site(site.clone())
                 .build(),
         )
     }
@@ -165,7 +169,7 @@ impl Kirby {
     }
 
     pub fn load_recursive(
-        site: &mut Site,
+        site: Arc<RwLock<Site>>,
         root_path: &PathBuf, // Change to reference
         dir_path: &PathBuf,  // Change to reference
     ) -> Result<(), DatabaseError> {
@@ -184,7 +188,7 @@ impl Kirby {
                     .map_or(false, |p| p.contains("_versions"))
             // K5: _versions is a directory that contains versioned content
             {
-                Self::load_recursive(site, root_path, &file_path)?;
+                Self::load_recursive(site.clone(), root_path, &file_path)?;
             } else if file_path.is_file()
                 && file_path.extension().and_then(|ext| ext.to_str()) == Some("txt")
             // TODO: Add support for markdown files?
@@ -196,14 +200,15 @@ impl Kirby {
                     .map_err(DatabaseError::from)?;
 
                 // Add the model to the site (assuming this is defined elsewhere)
-                Self::add_model_to_site(site, root_path, &file_path, &contents);
+                Self::add_model_to_site(site.clone(), root_path, &file_path, &contents);
             }
         }
 
         Ok(())
     }
 
-    pub fn content_folder_path(site: &Site) -> PathBuf {
+    pub fn content_folder_path(site: Arc<RwLock<Site>>) -> PathBuf {
+        let site = site.read().unwrap();
         // load from env variable
         let dir = dotenvy::var("KIRBY_CONTENT")
             .unwrap_or_else(|_| format!("{}/storage/content", site.dir().to_str().unwrap()));
@@ -245,23 +250,24 @@ mod tests {
 }
 
 impl Database for Kirby {
-    fn load(&self, site: &mut Site, changes: Vec<String>) -> Result<(), DatabaseError> {
-        let root_path = Self::content_folder_path(site);
+    fn load(&self, site: Arc<RwLock<Site>>, changes: Vec<String>) -> Result<(), DatabaseError> {
+        let root_path = Self::content_folder_path(site.clone());
 
         // if empty changes then load all from root_path
         if changes.is_empty() {
-            Self::load_recursive(site, &root_path, &root_path)
+            Self::load_recursive(site.clone(), &root_path, &root_path)
         } else {
             // else load each changed dirs/files separately
             for change in changes {
-                Self::load_recursive(site, &root_path, &PathBuf::from(change))?;
+                Self::load_recursive(site.clone(), &root_path, &PathBuf::from(change))?;
             }
             Ok(())
         }
     }
 
-    fn changes(&self, site: &Site) -> Vec<String> {
-        let root_path = Self::content_folder_path(site);
+    fn changes(&self, site: Arc<RwLock<Site>>) -> Vec<String> {
+        let root_path = Self::content_folder_path(site.clone());
+        let site = site.read().unwrap();
         let state_from_models: HashMap<String, SystemTime> = site
             .models
             .iter()

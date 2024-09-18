@@ -2,6 +2,7 @@ use crate::cms::model::{Model, ModelKind};
 use crate::database::DatabaseBuilder;
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::{Arc, RwLock};
 use url::Url;
 
 #[derive(Debug, Clone)]
@@ -32,15 +33,16 @@ impl Site {
         &self.url
     }
 
-    pub fn load(&mut self, changes: &Vec<String>) -> bool {
-        if !self.models.is_empty() && changes.is_empty() {
+    pub fn load(site_arc: Arc<RwLock<Site>>, changes: &Vec<String>) -> bool {
+        let site = site_arc.read().unwrap();
+        if site.models.is_empty() && changes.is_empty() {
             return false;
         }
 
         let database = DatabaseBuilder::new().build();
 
         // match DatabaseBuilder::new().build().load(self) {
-        match database.load(self, changes.clone()) {
+        match database.load(site_arc.clone(), changes.clone()) {
             Ok(_) => true,
             Err(e) => {
                 eprintln!("Error loading database: {}", e); // Print the error to the terminal
@@ -49,10 +51,10 @@ impl Site {
         }
     }
 
-    pub fn changes(&self) -> Vec<String> {
+    pub fn changes(site: Arc<RwLock<Site>>) -> Vec<String> {
         let database = DatabaseBuilder::new().build();
 
-        database.changes(self)
+        database.changes(site)
     }
 
     pub fn model(&self, lang: Option<&str>) -> Option<&Model> {
@@ -137,6 +139,7 @@ mod tests {
     use super::*;
     use crate::cms::model::ModelBuilder;
     use maplit::hashmap;
+    use std::sync::{Arc, RwLock};
 
     #[test]
     fn it_works() {
@@ -217,18 +220,33 @@ mod tests {
     #[test]
     fn it_can_have_a_parent_and_children() {
         let mut site = SiteBuilder::new().build();
+        let site_arc = Arc::new(RwLock::new(site));
 
-        let parent = ModelBuilder::new().path("/parent").build();
+        let parent = ModelBuilder::new()
+            .path("/parent")
+            .site(site_arc.clone())
+            .build();
 
-        let child = ModelBuilder::new().path("/parent/child").build();
+        let child = ModelBuilder::new()
+            .path("/parent/child")
+            .site(site_arc.clone())
+            .build();
 
-        site.models.insert(parent.path(), parent.clone());
-        site.models.insert(child.path(), child.clone());
+        site_arc
+            .write()
+            .unwrap()
+            .models
+            .insert(parent.path(), parent.clone());
+        site_arc
+            .write()
+            .unwrap()
+            .models
+            .insert(child.path(), child.clone());
 
-        let find_parent = child.parent(&site);
+        let find_parent = child.parent();
         assert_eq!(find_parent.unwrap().uuid(), Some(&parent).unwrap().uuid());
 
-        let find_children = parent.children(&site);
+        let find_children = parent.children();
         assert_eq!(find_children.len(), 1);
     }
 }

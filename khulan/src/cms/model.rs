@@ -1,9 +1,10 @@
 use crate::cms::content::Content;
 use crate::cms::field::Field;
 use crate::cms::model::ModelKind::File;
-use crate::cms::site::Site;
+use crate::cms::site::{Site, SiteBuilder};
 use rocket::serde::Serialize;
 use std::path::PathBuf;
+use std::sync::{Arc, RwLock};
 use std::time::SystemTime;
 
 #[derive(Serialize)]
@@ -16,9 +17,11 @@ pub struct Model {
     path: String,
     template: String,
     content: Content,
+    last_modified: SystemTime,
     #[serde(skip)]
     root: String,
-    last_modified: SystemTime,
+    #[serde(skip)]
+    site: Arc<RwLock<Site>>, // read-only reference to the site, thread-safe
 }
 
 impl Model {
@@ -46,7 +49,7 @@ impl Model {
         if self.kind == ModelKind::Site {
             path = "$".to_string(); // hack to make site model not overlap with home
         }
-        if self.kind == ModelKind::File {
+        if self.kind == File {
             path = format!(
                 "{}/{}",
                 self.path,
@@ -119,7 +122,7 @@ impl Model {
     }
 
     pub fn is_file(&self) -> bool {
-        self.kind == ModelKind::File
+        self.kind == File
     }
 
     pub fn is_user(&self) -> bool {
@@ -127,7 +130,7 @@ impl Model {
     }
 
     pub fn file(&self) -> Option<String> {
-        if self.kind == ModelKind::File {
+        if self.kind == File {
             Some(self.root.trim_end_matches(".txt").to_string())
         } else {
             None
@@ -163,7 +166,7 @@ impl Model {
         !self.is_draft()
     }
 
-    pub fn parent(&self, site: &Site) -> Option<Model> {
+    pub fn parent(&self) -> Option<Model> {
         // Split the path by '/' and remove the last segment
         let mut segments: Vec<&str> = self.path.split('/').collect();
         if segments.pop().is_none() {
@@ -173,6 +176,7 @@ impl Model {
         // Join the remaining segments back into a parent path
         let parent_path = segments.join("/");
 
+        let site = &self.site.read().unwrap();
         // Search the models in the site to find the one with a matching path
         let model = site.models.values().find(|model| model.path == parent_path);
 
@@ -182,7 +186,8 @@ impl Model {
         }
     }
 
-    pub fn children(&self, site: &Site) -> Vec<Model> {
+    pub fn children(&self) -> Vec<Model> {
+        let site = &self.site.read().unwrap();
         // let mut children = vec![];
         site.models
             .values()
@@ -219,6 +224,7 @@ pub struct ModelBuilder {
     content: Content,
     last_modified: SystemTime,
     root: String,
+    site: Arc<RwLock<Site>>,
 }
 
 impl ModelBuilder {
@@ -232,6 +238,7 @@ impl ModelBuilder {
             content: Content::new(None),
             last_modified: SystemTime::now(),
             root: "".to_string(),
+            site: Arc::new(RwLock::new(SiteBuilder::new().build())),
         }
     }
 
@@ -293,6 +300,11 @@ impl ModelBuilder {
         self
     }
 
+    pub fn site(&mut self, site: Arc<RwLock<Site>>) -> &mut Self {
+        self.site = site;
+        self
+    }
+
     pub fn build(&self) -> Model {
         Model {
             num: self.num.clone(),
@@ -303,6 +315,7 @@ impl ModelBuilder {
             content: self.content.clone(),
             last_modified: self.last_modified,
             root: self.root.clone(),
+            site: self.site.clone(),
         }
     }
 }

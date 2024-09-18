@@ -13,14 +13,12 @@ pub fn index(path: PathBuf, site_state: &State<Arc<RwLock<Site>>>) -> Result<Str
     let changes;
     {
         //  a read lock to check if the site needs refresh
-        let site = site_state.read().unwrap();
-        changes = site.changes();
+        changes = Site::changes(site_state.inner().clone());
         // println!("CHANGES: {:?}", changes.clone());
     }
 
     if changes.len() > 0 {
-        let mut site = site_state.write().unwrap();
-        site.load(&changes);
+        Site::load(site_state.inner().clone(), &changes);
     }
 
     let site = site_state.read().unwrap();
@@ -43,14 +41,12 @@ pub fn api_page(
     let changes;
     {
         //  a read lock to check if the site needs refresh
-        let site = site_state.read().unwrap();
-        changes = site.changes();
+        changes = Site::changes(site_state.inner().clone());
         // println!("CHANGES: {:?}", changes.clone());
     }
 
     if changes.len() > 0 {
-        let mut site = site_state.write().unwrap();
-        site.load(&changes);
+        Site::load(site_state.inner().clone(), &changes);
     }
 
     let site = site_state.read().unwrap();

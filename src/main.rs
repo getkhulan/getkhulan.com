@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate rocket;
 
+use khulan::cms::site::Site;
 use khulan::routes::*;
 use khulan::site;
 use maud::{html, Markup};
@@ -35,15 +36,16 @@ fn tmaud() -> Markup {
 fn rocket() -> _ {
     dotenvy::dotenv().ok();
 
-    let mut site = site()
+    let site = site()
         .dir(&std::env::current_dir().unwrap())
         .url(&Url::parse("http://localhost:8000").unwrap()) // TODO: get from rocket?!
         .build();
 
-    site.load(&vec![]);
+    let site_arc = Arc::new(RwLock::new(site));
+    Site::load(site_arc.clone(), &vec![]);
 
     rocket::build()
-        .manage(Arc::new(RwLock::new(site)))
+        .manage(site_arc.clone())
         .mount("/", routes![thbs, tmaud])
         .mount("/", routes![index, api_page, robots_txt, sitemap_xml])
         .mount("/", FileServer::from("./public"))
