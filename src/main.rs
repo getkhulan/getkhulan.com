@@ -14,7 +14,7 @@ use url::Url;
 
 #[get("/hbs")]
 fn thbs() -> Template {
-    let context = context! { hello: format!("world {}", add(2, 2)) };
+    let context = context! { hello: "world!".to_string() };
     Template::render("index", &context)
 }
 
@@ -26,7 +26,7 @@ fn tmaud() -> Markup {
                 title { "Title" }
             }
             body {
-                (format!("world {}", add(2, 2)))
+                h1 { "Hello, World!" }
             }
         }
     }
