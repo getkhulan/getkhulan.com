@@ -1,7 +1,6 @@
 #[macro_use]
 extern crate rocket;
 
-use khulan::cms::helpers::add;
 use khulan::routes::*;
 use khulan::site;
 use maud::{html, Markup};
