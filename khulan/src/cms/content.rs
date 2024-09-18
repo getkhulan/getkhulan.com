@@ -2,7 +2,7 @@ use super::field::Field;
 use serde::Serialize;
 use std::collections::HashMap;
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Default)]
 pub struct Content {
     pub fields: HashMap<String, Field>,
 }
@@ -16,6 +16,14 @@ impl Content {
 
     pub fn merge(&mut self, content: &Content) {
         self.fields.extend(content.fields.clone());
+    }
+}
+
+impl Default for Content {
+    fn default() -> Self {
+        Content {
+            fields: HashMap::new(),
+        }
     }
 }
 
