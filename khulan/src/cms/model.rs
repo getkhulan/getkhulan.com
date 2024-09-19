@@ -8,7 +8,7 @@ use std::time::SystemTime;
 
 #[derive(Serialize)]
 #[serde(crate = "rocket::serde")]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Model {
     num: String,
     kind: ModelKind,
@@ -46,7 +46,7 @@ impl Model {
         if self.kind == ModelKind::Site {
             path = "$".to_string(); // hack to make site model not overlap with home
         }
-        if self.kind == ModelKind::File {
+        if self.kind == File {
             path = format!(
                 "{}/{}",
                 self.path,
@@ -127,7 +127,7 @@ impl Model {
     }
 
     pub fn file(&self) -> Option<String> {
-        if self.kind == ModelKind::File {
+        if self.kind == File {
             Some(self.root.trim_end_matches(".txt").to_string())
         } else {
             None
@@ -201,7 +201,7 @@ impl Model {
     }
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
 pub enum ModelKind {
     Page,
     Site,
