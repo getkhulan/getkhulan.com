@@ -1,6 +1,6 @@
 use crate::cms::model::{Model, ModelKind};
 use crate::database::DatabaseBuilder;
-use std::collections::HashMap;
+use fxhash::FxHashMap;
 use std::path::PathBuf;
 use url::Url;
 
@@ -8,19 +8,19 @@ use url::Url;
 pub struct Site {
     dir: PathBuf, // TODO: refactor to roots hashmap
     url: Url,
-    pub models: HashMap<String, Model>,
+    pub models: FxHashMap<String, Model>,
 }
 
 impl Site {
     pub fn new(
-        models: Option<HashMap<String, Model>>,
+        models: Option<FxHashMap<String, Model>>,
         dir: Option<PathBuf>,
         url: Option<Url>,
     ) -> Self {
         Self {
             dir: dir.unwrap_or(PathBuf::from("")),
             url: url.unwrap_or(Url::parse("http://localhost:8000").unwrap()),
-            models: models.unwrap_or(HashMap::new()),
+            models: models.unwrap_or(FxHashMap::default()),
         }
     }
 
@@ -74,14 +74,18 @@ impl Site {
         // println!("search: {}", search);
         // println!("models: {:?}", self.models.keys());
         match lang {
-            Some(lang) => self.models.values().find(|model| {
-                model.language() == lang
-                    && *model.kind() == ModelKind::Page
-                    && (model.path() == search || model.uuid() == search)
+            Some(lang) => self.models.get(&search).or_else(|| {
+                self.models.values().find(|model| {
+                    model.language() == lang
+                        && *model.kind() == ModelKind::Page
+                        && (model.path() == search || model.uuid() == search)
+                })
             }),
-            None => self.models.values().find(|model| {
-                *model.kind() == ModelKind::Page
-                    && (model.path() == search || model.uuid() == search)
+            None => self.models.get(&search).or_else(|| {
+                self.models.values().find(|model| {
+                    *model.kind() == ModelKind::Page
+                        && (model.path() == search || model.uuid() == search)
+                })
             }),
         }
     }
@@ -97,7 +101,7 @@ impl Site {
 pub struct SiteBuilder {
     dir: PathBuf,
     url: Url,
-    models: HashMap<String, Model>,
+    models: FxHashMap<String, Model>,
 }
 
 impl SiteBuilder {
@@ -105,7 +109,7 @@ impl SiteBuilder {
         Self {
             dir: PathBuf::new(),
             url: Url::parse("http://localhost:8000").unwrap(),
-            models: HashMap::new(),
+            models: FxHashMap::default(),
         }
     }
 
@@ -119,7 +123,7 @@ impl SiteBuilder {
         self
     }
 
-    pub fn models(&mut self, models: HashMap<String, Model>) -> &mut Self {
+    pub fn models(&mut self, models: FxHashMap<String, Model>) -> &mut Self {
         self.models = models.clone();
         self
     }

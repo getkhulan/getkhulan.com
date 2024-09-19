@@ -8,6 +8,7 @@ kirby = ["tokio", "yaml-rust", "walkdir", "tempfile", "dotenvy"]
 robots_txt = ["rocket"]
 sitemap_xml = ["rocket"]
 multi_language = []
+file_watcher = []
 default = ["kirby", "robots_txt", "sitemap_xml"]
 
 [dependencies]
@@ -17,6 +18,7 @@ yaml-rust = { version = "*", optional = true }
 walkdir = { version = "*", optional = true }
 url = "*"
 maplit = "*"
+fxhash = "*"
 dotenvy = { version = "*", optional = true }
 tempfile = { version = "*", optional = true }
 serde = { version = "1.0.210", features = ["derive"] }
