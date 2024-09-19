@@ -9,6 +9,7 @@ pub struct Site {
     dir: PathBuf, // TODO: refactor to roots hashmap
     url: Url,
     pub models: FxHashMap<String, Model>,
+    pub last_modified: std::time::SystemTime,
 }
 
 impl Site {
@@ -21,6 +22,7 @@ impl Site {
             dir: dir.unwrap_or(PathBuf::from("")),
             url: url.unwrap_or(Url::parse("http://localhost:8000").unwrap()),
             models: models.unwrap_or(FxHashMap::default()),
+            last_modified: std::time::SystemTime::UNIX_EPOCH,
         }
     }
 
@@ -57,14 +59,16 @@ impl Site {
 
     pub fn model(&self, lang: Option<&str>) -> Option<&Model> {
         match lang {
-            Some(lang) => self
-                .models
-                .values()
-                .find(|model| model.language() == lang && *model.kind() == ModelKind::Site),
-            None => self
-                .models
-                .values()
-                .find(|model| *model.kind() == ModelKind::Site),
+            Some(lang) => self.models.get(format!("{lang}/$").as_str()).or_else(|| {
+                self.models
+                    .values()
+                    .find(|model| model.language() == lang && *model.kind() == ModelKind::Site)
+            }),
+            None => self.models.get("$").or_else(|| {
+                self.models
+                    .values()
+                    .find(|model| *model.kind() == ModelKind::Site)
+            }),
         }
     }
 
@@ -133,6 +137,7 @@ impl SiteBuilder {
             dir: self.dir.clone(),
             url: self.url.clone(),
             models: self.models.clone(),
+            last_modified: std::time::SystemTime::UNIX_EPOCH,
         }
     }
 }

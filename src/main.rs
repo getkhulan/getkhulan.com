@@ -41,6 +41,8 @@ fn rocket() -> _ {
         .build();
 
     site.load(&vec![]);
+    // println!("Models loaded: {:?}", site.models.len());
+    // println!("Last modified: {:?}", site.last_modified);
 
     rocket::build()
         .manage(Arc::new(RwLock::new(site)))

@@ -26,6 +26,9 @@ impl Kirby {
 
         match model {
             Some(model) => {
+                if model.last_modified() > site.last_modified {
+                    site.last_modified = model.last_modified();
+                }
                 site.models.insert(model.path(), model);
             }
             None => {
@@ -261,7 +264,24 @@ impl Database for Kirby {
     }
 
     fn changes(&self, site: &Site) -> Vec<String> {
+        #[cfg(not(feature = "kirby_file_watcher"))]
+        return vec![];
+
         let root_path = Self::content_folder_path(site);
+
+        // if a special file  exists in the root_path, then read it for the last updated timestamp of the kirby system
+        if let Ok(mut file) = fs::File::open(root_path.join(".content-last-modified-at")) {
+            let mut contents = String::new();
+            file.read_to_string(&mut contents).unwrap();
+            let last_updated = SystemTime::UNIX_EPOCH
+                + std::time::Duration::from_secs(contents.parse::<u64>().unwrap());
+            // if the last_updated timestamp is less than or equal to the site's last_modified timestamp, then return empty changes
+            if last_updated <= site.last_modified {
+                // println!("No changes detected");
+                return vec![];
+            }
+        }
+
         let state_from_models: HashMap<String, SystemTime> = site
             .models
             .iter()
